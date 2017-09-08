@@ -6,3 +6,9 @@
 
 # Ignore all pdf files in current and sub-folders
 **.pdf
+
+# Ignore all rtf files in current and sub-folders
+**.rtf
+
+# Ignore all doc files in current and sub-folders
+**.doc
