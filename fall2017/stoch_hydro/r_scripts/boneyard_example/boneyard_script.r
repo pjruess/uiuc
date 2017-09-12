@@ -1,4 +1,4 @@
-setwd("/media/paul/1A1AB7F71AB7CE4F/Users/Paul/Documents/UIUC/fall_2017/stochastic_hydrology/R_class_files/boneyard_example")
+# setwd("/home/paul/windows/Users/Paul/Documents/UIUC/uiuc_scripts/fall2017/stoch_hydro/r_scripts/boneyard_example")
 
 # Start PDF plotting device
 pdf("boneyard_ratingcurve.pdf", height=5, width=5)
