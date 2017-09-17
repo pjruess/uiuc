@@ -1,9 +1,9 @@
 import pandas
 import geocoder
 
-exp = pandas.read_csv('../../research/landon/port_exports_world_2012_raw.csv')
-imp = pandas.read_csv('../../research/landon/port_imports_world_2012_raw.csv')
-trans = pandas.read_csv('../../research/landon/SCTG-HS Crosswalk.csv')
+exp = pandas.read_csv('../../research/port_data/port_exports_world_2012_raw.csv')
+imp = pandas.read_csv('../../research/port_data/port_imports_world_2012_raw.csv')
+trans = pandas.read_csv('../../research/port_data/SCTG-HS Crosswalk.csv')
 
 # total = total value of goods
 # sea = value of trade through vessel ports (seaborne trade)
@@ -11,6 +11,9 @@ trans = pandas.read_csv('../../research/landon/SCTG-HS Crosswalk.csv')
 # van = value of shipments transported in any van-type container (already included in sea)
 exp.columns = ['port','commodity','total_exports_$','sea_exports_$','sea_exports_kg','air_exports_$','air_exports_kg','van_exports_$','van_exports_kg']
 imp.columns = ['port','commodity','total_imports_$','sea_imports_$','sea_imports_kg','air_imports_$','air_imports_kg','van_imports_$','van_imports_kg']
+
+test = len(exp['port'].unique())
+print 'Unique number of ports: {0}'.format(str(test))
 
 # Sum all kg for total mass
 exp['total_exports_kg'] = exp['sea_exports_kg'] + exp['air_exports_kg']
@@ -74,44 +77,16 @@ df.columns = ['port','sctg','out($)','in($)']
 # Note: This basically does the opposite of the melt function
 df = df.pivot_table(values=['out($)','in($)'],index='port',columns='sctg')
 
-# Gather port data from World Port Index
-wpi = pandas.read_csv('../../research/landon/world_port_index_data.csv',usecols=['PORT_NAME','COUNTRY','LATITUDE','LONGITUDE'])#,'LAT_DEG','LAT_MIN','LAT_HEMI','LONG_DEG','LONG_MIN','LONG_HEMI'])
-# Look only at ports in the US
-wpi = wpi.loc[wpi['COUNTRY'] == 'US']
-
 df.columns = [s1 + '_' + str(s2) for (s1,s2) in df.columns.tolist()]
 
 df.reset_index(inplace=True)
 
-# Clean up port names
-# print df.loc[df['port'].str.contains('Airport')]['port'].str.replace(r' \(.*?\)','')
-
+# Clean up port names to make google geocoding more successful
 df['port'] = df['port'].str.replace(r' \(.*?\)','')
-# df['port'] = df['port'].str.replace(' City','')
 df['port'] = 'Port ' + df['port']
-# print df
-
-# print df
-# df.loc[df['port'].str.contains('Airport'),'port'] = df['port'].replace(r' \(.*?\)','')
-# print df
-# df.loc[df['port'].str.contains('Airport'), df['port']].str.replace(r' \(.*?\)','')
-
-# for p in df['port'].values:
-# 	g = geocoder.google(p).latlng
-# 	print g[0]
-# 	1/0
-
-# df['coords'] = df['port'].apply(geocoder.google)
-
-# lo = 0
-# hi = 10
-
-# df3 = df.ix[lo:hi,:]
-
-# df3 = df3.reset_index()
 
 def write_data(dest,type):
-	if type == 'a': geodf = pandas.read_csv('../../research/landon/counties.csv') # Find ports already read, then skip those
+	if type == 'a': geodf = pandas.read_csv('../../research/port_data/counties.csv') # Find ports already read, then skip those
 	else: geodf = pandas.DataFrame(columns=['port','county','lat','lon'])
 	finished_ports = geodf['port'].values
 
@@ -140,79 +115,42 @@ def write_data(dest,type):
 				w.writerow([p,c,lat,lon])
 		f.close()
 
-	print 'FINISHED'
-
 def get_geodata(dest):
 	# Check if file exists, then run either as 'write' or 'append'
 	import os.path
 	if os.path.isfile(dest): write_data(dest,'a')
 	else: write_data(dest,'w')
 
-get_geodata('../../research/landon/counties.csv')
+get_geodata('../../research/port_data/counties.csv')
 
-geodf = pandas.read_csv('../../research/landon/counties.csv') # Find ports already read, then skip those
+geodf = pandas.read_csv('../../research/port_data/counties.csv') # Find ports already read, then skip those
 
 finaldf = pandas.merge(df,geodf,on=['port'])
 
+finaldf['port'] = finaldf['port'].apply(lambda x: x.split(' ',1)[1])
+
+# Fill in empty counties using census api
+import requests
+def get_fcc_data(data,portlist,latlist,lonlist):
+	res = []
+	for port,lat,lon in zip(portlist,latlist,lonlist):
+		url = 'http://data.fcc.gov/api/block/find?format=json&latitude={0}&longitude={1}'
+		response = requests.get(url.format(lat,lon))
+		try: 
+			county = response.json()['County'][data]
+		except: 
+			county = 'NoData'
+		res.append(county)
+		print port,lat,lon,county
+
+	return res
+
+finaldf['ll_county'] = get_fcc_data('name',finaldf['port'],finaldf['latitude'],finaldf['longitude'])
+finaldf['ll_fips'] = get_fcc_data('FIPS',finaldf['port'],finaldf['latitude'],finaldf['longitude'])
+
 print finaldf
 
-# print geocoder.google('')
-
-# print geodf.loc[(geodf['county'] == 'NoData') & (geodf['lat'] == 'NoData')] # 28 counties with no data
-
-# df3['county'] = df3['port'].apply(lambda x: geocoder.google(x).county if geocoder.google(x) else 'No Data')
-
-# print df3
-
-# df['county'] = df['port'].apply(lambda x: geocoder.google(x).county if geocoder.google(x) else 'No Data')
-
-
-
-# Get geocoded coords for each destination
-# df['coords'] = df['port'].apply(lambda x: geocoder.google(x).latlng if geocoder.google(x) else ['No Data','No Data'])
-
-# df['lat'], df['lon'] = zip(*[f.latlng for f in df['coords'] if f])
-
-# df['lat'],df['lon'] = zip(*[f if f[0] != 'No Data' else f for f in df['coords']])
-
-# print df
+# print finaldf
 
 # Write to csv
-finaldf.to_csv('../../research/landon/port_statistics_final.csv')
-
-# df3.loc[df3['lat'].isnull()]['port'].replace({' City':''},regex=True,inplace=True) # select problem rows
-
-# print df3.loc[df3['coords'].values == [None,None],'port']# = df3['port'].str.replace(' City','') # select problem rows
-
-# df3.loc[df3['lat'].isnull(),'port'] = df3['port'].str.replace(' City','') # select problem rows
-
-# df3['coords'] = df3.loc[df3['lat'].isnull(),'port'].apply(lambda x: geocoder.google(x).latlng if geocoder.google(x) else [None,None])
-
-# print df3
-
-# print df3.loc[df3['coords'].notnull().values]
-
-# df3.loc[df3['coords'].notnull(),'lat'] = df3.loc[df3['coords'].notnull().values[0]]
-
-# df3.loc[df3['lat'].isnull(),'lat'] = df3['coords'][0]
-
-# df3['lat'],df3['lon'] = zip(*[f if f[0] is not nan else f for f in df3['coords']])
-
-
-# print df3
-
-# for p in df['port'].values:
-	# Having problems with Detour City, MI (port Detour, MI exists)
-	# If removing city, Atlantic City Airport fails...
-	# print p, geocoder.google(p).latlng
-
-# df['lat'], df['lon'] = zip(*[geocoder.google(p).latlng for p in df['port'].values])
-# print df
-# df3['coords'] = [geocoder.google(p).latlng for p in df3['port'].values]
-
-# df3['lat'] = df['coords'][0]
-# df3['lon'] = df['coords'][1]
-
-# df3['coords'] = df3['port'].apply(geocoder.google)
-
-# [geocoder.google(p).latlng for p in df['port'].values]
+finaldf.to_csv('../../research/port_data/port_statistics_raw.csv',index=False,encoding='utf-8')
