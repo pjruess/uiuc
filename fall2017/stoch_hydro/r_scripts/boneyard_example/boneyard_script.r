@@ -14,7 +14,7 @@ plot(bone.data$StageFT,bone.data$FlowCFS,xlab='Stage (ft)',ylab='Flow (cfs)',mai
 abline(lm(log(bone.data$FlowCFS)~bone.data$StageFT),col='blue',lwd=2)
 
 # Histogram with default settings
-# prob is probabiility
+# prob is probability
 # ylim is y-axis boundaries
 # breaks defines number of bins
 hist(bone.data$StageFT,prob=TRUE,ylim=c(0,3),breaks=45)

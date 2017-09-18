@@ -4,7 +4,7 @@ boneyard1948 <- read.csv('Boneyard_1948-1960.csv')
 # colnames(boneyard1948)
 
 # T-test
-# Mdeveloped(2012) - Mundeveloped(1948) > 0 <-- greater
+# Mudeveloped(2012) - Mundeveloped(1948) > 0 <-- greater
 t.test(x=boneyard2012$FlowCFS,y=boneyard1948$FlowCFS,alternative='greater',var.equal=FALSE)
 
 # P-value is smaller than alpha, so reject null hypothesis
