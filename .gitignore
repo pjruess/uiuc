@@ -3,5 +3,6 @@
 
 # Exceptions...
 !.gitignore
-!*/**.py
-!*/**.r
+!*/
+!*.py
+!*.r
