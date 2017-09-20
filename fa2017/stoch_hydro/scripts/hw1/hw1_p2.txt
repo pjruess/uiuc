@@ -1,0 +1,8 @@
+Sample Mean:  114.4133 
+Standard Deviation:  685.067 
+Number of Samples:  365 
+Alpha Value:  0.05 
+T Value:  1.966503 
+Error:  70.51494 
+CI Lower:  43.89838 
+CI Upper:  184.9283 
