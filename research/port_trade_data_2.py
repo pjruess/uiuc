@@ -1,6 +1,5 @@
 import pandas
 import geocoder
-import os.path
 
 exp = pandas.read_csv('../../research/port_data/port_exports_world_2012_raw.csv')
 imp = pandas.read_csv('../../research/port_data/port_imports_world_2012_raw.csv')
@@ -12,6 +11,9 @@ trans = pandas.read_csv('../../research/port_data/SCTG-HS Crosswalk.csv')
 # van = value of shipments transported in any van-type container (already included in sea)
 exp.columns = ['port','commodity','total_exports_$','sea_exports_$','sea_exports_kg','air_exports_$','air_exports_kg','van_exports_$','van_exports_kg']
 imp.columns = ['port','commodity','total_imports_$','sea_imports_$','sea_imports_kg','air_imports_$','air_imports_kg','van_imports_$','van_imports_kg']
+
+test = len(exp['port'].unique())
+print 'Unique number of ports: {0}'.format(str(test))
 
 # Sum all kg for total mass
 exp['total_exports_kg'] = exp['sea_exports_kg'] + exp['air_exports_kg']
@@ -79,33 +81,23 @@ df.columns = [s1 + '_' + str(s2) for (s1,s2) in df.columns.tolist()]
 
 df.reset_index(inplace=True)
 
-# Remove 'Low Value', 'Mail Shipments', and 'Canadian Late Receipts Estimate'
-print df.shape
-
-# print df['Low Value']
-bad_data = ['Low Value (Port)','Mail Shipments (Port)','Canadian Late Receipts Estimate (Port)']
-for b in bad_data: 
-	if (df['port'] == b).any(): df = df[df['port'] != b]
-# df = df.drop(['Low Value (Port)','Mail Shipments (Port)','Canadian Late Receipts Estimate (Port)'])
-
 # Clean up port names to make google geocoding more successful
 df['port'] = df['port'].str.replace(r' \(.*?\)','')
 df['port'] = 'Port ' + df['port']
 
 def write_data(dest,type):
-	if type == 'a': geodf = pandas.read_csv(dest) # Find ports already read, then skip those
-	else: geodf = pandas.DataFrame(columns=['port','geo_county','geo_lat','geo_lon'])
+	if type == 'a': geodf = pandas.read_csv('../../research/port_data/counties.csv') # Find ports already read, then skip those
+	else: geodf = pandas.DataFrame(columns=['port','county','lat','lon'])
 	finished_ports = geodf['port'].values
 
 	import unicodecsv as csv # Handles unicode characters in port names
 	with open(dest, type) as f:
 		w = csv.writer(f)
-		if type == 'w': w.writerow(['port','geo_county','geo_lat','geo_lon'])
+		if type == 'w': w.writerow(['port','county','latitude','longitude'])
 		for p in df['port'].values:
 			if p not in finished_ports:
 				g = geocoder.google(p)
 				# Retrieve county information
-				print g.county
 				try: # retrieve geocode results
 					c = g.county
 				except ValueError as err: # if none, fill with 'NoData'
@@ -119,20 +111,19 @@ def write_data(dest,type):
 					if str(err) == 'ZERO_RESULTS':
 						lat,lon = ['NoData','NoData']
 				
-				print 'Adding geocoder information: {0}, {1}, {2}, {3}'.format(p,c,lat,lon)
+				print p, c, lat, lon
 				w.writerow([p,c,lat,lon])
 		f.close()
 
 def get_geodata(dest):
 	# Check if file exists, then run either as 'write' or 'append'
+	import os.path
 	if os.path.isfile(dest): write_data(dest,'a')
 	else: write_data(dest,'w')
 
-dest = '../../research/port_data/results/geocoder_data.csv'
+get_geodata('../../research/port_data/counties.csv')
 
-get_geodata(dest)
-
-geodf = pandas.read_csv(dest) # Find ports already read, then skip those
+geodf = pandas.read_csv('../../research/port_data/counties.csv') # Find ports already read, then skip those
 
 finaldf = pandas.merge(df,geodf,on=['port'])
 
@@ -140,29 +131,26 @@ finaldf['port'] = finaldf['port'].apply(lambda x: x.split(' ',1)[1])
 
 # Fill in empty counties using census api
 import requests
-def get_fcc_data(data,portlist,latlist,lonlist):	
+def get_fcc_data(data,portlist,latlist,lonlist):
 	res = []
 	for port,lat,lon in zip(portlist,latlist,lonlist):
 		url = 'http://data.fcc.gov/api/block/find?format=json&latitude={0}&longitude={1}'
 		response = requests.get(url.format(lat,lon))
 		try: 
-			info = response.json()['County'][data]
+			county = response.json()['County'][data]
 		except: 
-			info = 'NoData'
-		res.append(info)
-		if info: print 'Adding FCC API information: {0}, {1}, {2}, {3}'.format(port,info.encode('utf-8'),lat,lon)
-		else: print 'Adding FCC API information: {0}, {1}, {2}, {3}'.format(port,'No Info',lat,lon)
+			county = 'NoData'
+		res.append(county)
+		print port,lat,lon,county
 
 	return res
 
-finaldf['fcc_county'] = get_fcc_data('name',finaldf['port'],finaldf['geo_lat'],finaldf['geo_lon'])
-finaldf['fcc_fips'] = get_fcc_data('FIPS',finaldf['port'],finaldf['geo_lat'],finaldf['geo_lon'])
+finaldf['ll_county'] = get_fcc_data('name',finaldf['port'],finaldf['latitude'],finaldf['longitude'])
+finaldf['ll_fips'] = get_fcc_data('FIPS',finaldf['port'],finaldf['latitude'],finaldf['longitude'])
 
 print finaldf
 
-print 'Unique number of ports: {0}'.format(str(len(finaldf['port'].unique())))
+# print finaldf
 
 # Write to csv
-results = '../../research/port_data/results/port_statistics_raw.csv'
-finaldf.to_csv(results,index=False,encoding='utf-8')
-print 'Results written to {0}'.results
+finaldf.to_csv('../../research/port_data/port_statistics_raw.csv',index=False,encoding='utf-8')
