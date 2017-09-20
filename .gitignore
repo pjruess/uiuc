@@ -1,7 +1,0 @@
-# Ignore everything
-*
-
-# Exceptions...
-!.gitignore
-!**.py
-!**.r
