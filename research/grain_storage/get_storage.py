@@ -10,10 +10,6 @@ county_harvest = pandas.read_csv(
 	'state_data_2012/county_acres_harvested_census.csv'
 	)
 
-# Create GEOID for all counties
-# Get fractional production for each county
-# Get virtual water content for all crops in each county location
-
 # Remove Alaska and Hawaii
 county_harvest = county_harvest[county_harvest['State'] != 'ALASKA']
 county_harvest = county_harvest[county_harvest['State'] != 'HAWAII']
@@ -44,4 +40,19 @@ harvest_pcts = commodity_sum.groupby(['GEOID']).apply( #percent
 	lambda x: 100 * x / float(x.sum())
 	)
 harvest_pcts = harvest_pcts.reset_index()
+print harvest_pcts
+
+# Get virtual water content for all crops in each county location
+# 15 - wheat
+# 27 - rice, paddy
+# 44 - barley
+# 56 - maize
+# 71 - rye
+# 75 - oats
+# 79 - millet
+# 83 - sorghum
+# 89 - buckwheat
+# 97 - triticale
+# 103 - mixed grains
+# 108 - cereal nes
 
