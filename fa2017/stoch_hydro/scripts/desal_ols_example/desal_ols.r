@@ -50,8 +50,26 @@ SEC.res <- resid(SEC)
 plot(lit$RWM3D,SEC.res)
 abline(0,0,lwd=1.5)
 
-# Quantitative (and visual) check for constant variance
+# Quantitative (and visual) check for Constant Variance
 # Tukey test... 
-# Ho: Quadratic term in trend line is zero
-# Ha: Quadratic term is not zero <-- heteroscedastic
-residualPlots(SEC) # this returns Tukey test p-values
+# Ho: Quadratic term in trend line is zero... a*x^2 + b*x + c, a = 0
+# Ha: Quadratic term is not zero <-- heteroscedastic, a != 0
+residualPlots(SEC) # this returns resid plot for all variables, & Tukey p-values
+# Low p-values --> reject null --> heteroscedastic (unequal resid variance). BAD. 
+
+# Boxcox raises to lambda power to decrease heteroscedasticity
+boxcox(SEC) # determines lambda values
+
+# Independence (ie. lack of trends)
+# Can re-use residualPlots() to search for Indepedence
+# Autocorrelation: Lack of Independence
+
+# Quantitative check for Independence
+# Durbin-Watson test...
+# Ho: Autocorrelation = 0
+# Ha: Autocorrelation != 0
+library(lmtest)
+dwtest(SEC,alternative='two.sided') # two.sided, greater, or less
+# Variance Inflation Factor
+vif(SEC) # Relationship between variables. Want low values; high means variables
+		 # are very related and are likely redundant
