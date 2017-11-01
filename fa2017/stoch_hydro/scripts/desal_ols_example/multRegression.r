@@ -5,8 +5,11 @@ Labels<-names(thedata)[2:length(thedata)]
 multRegress<-function(mydata){
 numVar<<-NCOL(mydata)
 Variables<<- names(mydata)[2:numVar]
-
+# print(mydata)
+# print('----------------')
 mydata<-cor(mydata, use="complete.obs")
+# print(mydata)
+# stop()
 RXX<-mydata[2:numVar,2:numVar]
 RXY<-mydata[2:numVar,1]
 
@@ -42,7 +45,7 @@ multBootrand<-function(mydata, indices){
 }
 
 #bootstrapping
-install.packages("boot")
+# install.packages("boot")
 library(boot)
 
 mybootci<-function(x){
