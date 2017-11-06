@@ -59,11 +59,18 @@ class alldata:
                 for b in b_list:
                     self.harvest_data = self.harvest_data[self.harvest_data['Commodity'] != b]
 
-#         # Create GEOID column for datasets
-#         self.create_geoid(self.county_codes)
-#         self.create_geoid(self.harvest_data)
-#         self.create_geoid(self.yield_data)
-#         self.create_geoid(self.storage_data)
+        # Create GEOID column for datasets
+        self.create_geoid(self.county_codes)
+        self.create_geoid(self.harvest_data)
+        self.create_geoid(self.yield_data)
+        self.create_geoid(self.storage_data)
+
+        # Stretch yield and harvest data out
+        # self.harvest_data = self.stretch(self.harvest_data,'Harvest_Acre') # don't want this
+        # self.yield_data = self.stretch(self.yield_data,'Yield_Bu_per_Acre')
+
+        # Get fractional harvest distribution
+        self.harvest_data = self.harvest_fraction()
 
     ### CLEAN UP DATA ###
     def clean_data(self,dataset,value_rename):
@@ -72,8 +79,8 @@ class alldata:
         # Rename 'Value' column headers to have meaningful names
         dataset.rename(columns={'Value': value_rename},inplace=True) # Rename column header
 
-#         # Remove Alaska and Hawaii
-#         dataset.drop(~dataset['State'].isin(states_ignore),inplace=True)
+        # Remove Alaska and Hawaii
+        dataset.drop(dataset[dataset['State'].isin(states_ignore)].index,inplace=True)
 
         # Convert value columns to numeric by removing thousands' place comma
         # and converting all non-numeric, ie. ' (D)', to 'NaN'
@@ -86,10 +93,10 @@ class alldata:
     def create_geoid(self,dataset):
         # Create GEOID column for yield data
         dataset['State ANSI'] = dataset['State ANSI'].apply(
-            lambda x: str(x).zfill(2)
+            lambda x: '{0:02g}'.format(x) # formats leading zeros while ignoring decimal points
             )
         dataset['County ANSI'] = dataset['County ANSI'].apply(
-            lambda x: str(int(x)).zfill(3)
+                lambda x: '{0:03g}'.format(x) # formats leading zeros while ignoring decimal points
             )
         dataset['GEOID'] = dataset['State ANSI'] + dataset['County ANSI']
 
@@ -126,71 +133,58 @@ class alldata:
 #         self.average_other_yields()
 #         # Make sure all counties are in yield_data
 
-    # Dis-aggregate yield data from 'other counties' to all existing counties
-    def stretch_yields(self):
+    # Dis-aggregate data from 'other counties' to all existing counties
+    def stretch(self,dataset,value):
+        # dataset['STATE-DISTRICT'] = list(zip(dataset['State'], dataset['Ag District']))
 
-        # Remove 'other counties' sections to determine which counties are accounted for
-        yield_counties = self.yield_data[pandas.notnull(self.yield_data['County ANSI'])]
-        harvest_counties = self.harvest_data[pandas.notnull(self.harvest_data['County ANSI'])]
+        others = dataset[dataset['County ANSI'] == 'nan']
+        nonothers = dataset[dataset['County ANSI'] != 'nan']
+        # print self.county_codes[(self.county_codes['State ANSI'] == '01') & (self.county_codes['District ANSI'] == 40)]
+        # print nonothers[(nonothers['State ANSI'] == '01') & (nonothers['Ag District Code'] == 40)] 
 
-        # Keep only 'other counties' sections
-        yield_others = self.yield_data[pandas.isnull(self.yield_data['County ANSI'])]
-        harvest_others = self.harvest_data[pandas.isnull(self.harvest_data['County ANSI'])]
+        # print others.head()
 
-        # Groupby State-Dist Pair
-        all_yield_data = yield_counties
+        newrows = []
 
-        for s,a,c,d,y in zip(yield_others['State ANSI'],yield_others['Ag District Code'],yield_others['Commodity'],yield_others['Data Item'],yield_others['Yield_Bu_per_Acre']):
-            # Get list of counties in this ag district
-            district_counties = self.county_codes[self.county_codes['District ANSI'] == a]['County ANSI'].values
-
-            # Determine which of these counties are not already on the list
-            local_counties = yield_counties[yield_counties['Ag District Code'] == a]['County ANSI'].values
-
-            county_difference = set(district_counties).symmetric_difference(set(local_counties))
+        for i,r in others.iterrows():
+            d = nonothers[(nonothers['State'] == r['State']) & (nonothers['Ag District'] == r['Ag District']) & (nonothers['Commodity'] == r['Commodity'])] # dataframe of nonothers matching state-agdist-commodity of current 'others' row
+            # state_geoids = self.county_codes[self.county_codes['State ANSI'] == r['State ANSI']]['GEOID'].unique()
+            # other_geoids = set(state_geoids) - set(d['GEOID'].values)
+            # print d['GEOID'].unique()
+            # print d.head()
+            a = self.county_codes[(self.county_codes['State ANSI'] == r['State ANSI']) & (self.county_codes['District ANSI'] == r['Ag District Code'])]# dataframe of all counties matching state-agdist-commodity of current 'others' row
+            # print a['GEOID'].unique()
+            # print a.head()
+            nodata_geoids = set(a['GEOID'].unique()) - set(d['GEOID'].unique())
+            # df_to_add = dataset[(dataset['GEOID'].isin(nodata_geoids)) & (dataset['Commodity'] == r['Commodity'])]
+            # print df_to_add
             
-            # For counties not currently included, create new dataframe with values taken from 'other counties'
-            temp_list = []
-            for county in county_difference: 
-                temp_list.append({
-                    'State ANSI': s,
-                    'Ag District Code': a,
-                    'Commodity': c,
-                    'Data Item': d,
-                    'Yield_Bu_per_Acre': y,
-                    'County ANSI': county
-                    })
-
-            temp_df = pandas.DataFrame(temp_list)
-
-            all_yield_data = pandas.concat([all_yield_data,temp_df])
-
-        print all_yield_data
-
-########### DO AGAIN FOR HARVEST DATA AS WELL??? #################
-
-
-        # Add counties that are not currently present
-        yield_all = pandas.concat([yield_counties,self.county_codes])
+            # For each geoid not represented, copy 'others' data and add row with updated geoid (and county, etc.)
+            for g in nodata_geoids:
+                temprow = others.loc[i,]
+                c = self.county_codes[(self.county_codes['GEOID'] == g) & (self.county_codes['District ANSI'] == r['Ag District Code'])]
+                temprow.at['County'] = c['Name'].values[0]
+                temprow.at['GEOID'] = g
+                temprow.at['County ANSI'] = c['County ANSI'].values[0]
+                newrows.append(temprow)
         
-
-        # Find all counties in harvest database
-        harvest_counties = self.harvest_data['County ANSI']
-
-
-        # Create GEOID column for yield data
-        codes.loc[:,'State'] = codes['State'].apply(
-            lambda x: str(x).zfill(2)
-            )
-        codes.loc[:,'County'] = codes['County'].apply(
-            lambda x: str(int(x)).zfill(3)
-            )
-        codes.loc[:,'GEOID'] = codes['State'] + codes['County']
+        # Create new dataframe 
+        dfnew = nonothers.append(pandas.DataFrame(newrows,columns=others.columns)).reset_index() 
+        return dfnew
 
     # Convert harvest values to county-wide fractional harvest
     # Add zero for counties with no harvest in a county
     def harvest_fraction(self):
-        pass
+        # print self.harvest_data[self.harvest_data['GEOID'] == '56015']
+        # Collect percentage of all area harvested by commodity for each state-county pair
+        self.harvest_data['Percent_Harvest'] = self.harvest_data['Harvest_Acre'] # initialize new column
+        df = self.harvest_data.groupby(['GEOID','State','Ag District','County','Commodity','Harvest_Acre'])['Percent_Harvest'].sum() #sum
+        harvest = df.groupby(['GEOID']).apply( #percent
+        	lambda x: 100 * x / float(x.sum())
+        	)
+        harvest = harvest.reset_index()
+        return harvest
+        # print harvest[harvest['GEOID'] == '56015']
 
     # Create summary dataframe with all data organized by GEOID
     def summary_df(self):
@@ -215,15 +209,6 @@ class alldata:
         # print yield_data[yield_data['County'] == 'AUTAUGA']
         # print storage_data[storage_data['County'] == 'AUTAUGA']
         # print alldata[alldata['County'] == 'AUTAUGA']
-
-        # Create GEOID column
-        cropdata['State_ANSI'] = cropdata['State_ANSI'].apply(
-            lambda x: str(x).zfill(2)
-            )
-        cropdata['County_ANSI'] = cropdata['County_ANSI'].apply(
-            lambda x: str(int(x)).zfill(3)
-            )
-        cropdata['GEOID'] = cropdata['State_ANSI'] + cropdata['County_ANSI']
 
         # Convert '(D)' to NaN in storage dataframe
         storage['Grain_Storage_Capacity_Bushels'] = storage['Grain_Storage_Capacity_Bushels'].apply(
@@ -264,12 +249,12 @@ class alldata:
 
 if __name__ == '__main__':
     # All paths and column specifications for data class
-    harvest_path = 'usda_nass_data/usda_county_harvest_2012.csv'
-    harvest_cols = ['State ANSI','County ANSI','Ag District Code','Commodity','Data Item','Value']
+    harvest_path = 'usda_nass_data/usda_county_harvest_census_2012.csv' # Census data is more complete than Survey data
+    harvest_cols = ['State','State ANSI','County','County ANSI','Ag District','Ag District Code','Commodity','Data Item','Value']
     yield_path = 'usda_nass_data/usda_county_yield_2012.csv'
-    yield_cols = ['State ANSI','County ANSI','Ag District Code','Commodity','Data Item','Value']
+    yield_cols = ['State','State ANSI','County','County ANSI','Ag District','Ag District Code','Commodity','Data Item','Value']
     storage_path = 'usda_nass_data/usda_county_storage_2012.csv' # Note: This data is overall grain storage; commodities not specified
-    storage_cols = ['State ANSI','County ANSI','Value']
+    storage_cols = ['State','State ANSI','County','County ANSI','Ag District','Ag District Code','Value']
     codes_path = 'usda_nass_data/county_codes.csv'
     areas_path = 'county_areas.csv'
 
@@ -307,4 +292,3 @@ if __name__ == '__main__':
     # print 'harvest data items ',data.harvest_data['Data Item'].unique()
     # print 'yield data items ',data.yield_data['Data Item'].unique()
     # print '------------------------------------------'
-    data.stretch_yields()
