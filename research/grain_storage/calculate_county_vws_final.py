@@ -4,9 +4,8 @@
 # Personal Research
 # US Virtual Water Storage by County
 
-### NEED TO MAKE MAPS OF VWS FOR ALL COUNTIES BY EACH CROP TYPE
-### ALSO NEED TO USE GROUPBY TO CREATE A CSV SUMMING EACH COUNTY INTO ONE VWS (OF ALL COMMODITIES) AND PLOT THAT
-
+# Calculate YIELD using PRODUCTION (download this) and ALAND
+# Use STATE-level storage data (off-farm) and sum with aggregated COUNTY-level storage data (on-farm)
 
 import pandas
 import scipy
@@ -99,7 +98,7 @@ class alldata:
         finaldf = self.summary_df('preliminary_summary_data.csv')
 
         # Calculate VWS
-        vws = self.calculate_vws(finaldf,'vws_all_data.csv')
+        vws = self.calculate_vws(finaldf,'vws_final_data.csv')
 
     ### CLEAN UP DATA ###
     def clean_data(self,dataset,value_rename):
