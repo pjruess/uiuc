@@ -4,9 +4,6 @@
 # Personal Research
 # US Virtual Water Storage by County
 
-# Calculate YIELD using PRODUCTION (download this) and ALAND
-# Use STATE-level storage data (off-farm) and sum with aggregated COUNTY-level storage data (on-farm)
-
 import pandas
 import scipy
 import os
@@ -18,7 +15,7 @@ class alldata:
     """Class for reading in and cleaning harvest, yield, 
     and storage values from raw USDA data in .csv format"""
 
-    def __init__(self,harvest_path,harvest_cols,yield_path,yield_cols,production_path,production_cols,storage_path,storage_cols,harvest_trim_list,yield_trim_list,production_trim_list,codes_path,usda_to_wfn_path,states_ignore):
+    def __init__(self,harvest_path,harvest_cols,yield_path,yield_cols,production_path,production_cols,storage_path,storage_cols,harvest_trim_list,yield_trim_list,production_trim_list,codes_path,usda_to_wfn_path,states_ignore,year):
         """All 'path' inputs must be strings leading to harvest, 
         yield, and storage data file paths, respectively
         All 'cols' inputs must be lists of strings specifying
@@ -26,12 +23,16 @@ class alldata:
 
         # Read in dataset containing county grain harvest values
         self.harvest_data = pandas.read_csv(harvest_path,usecols=harvest_cols)
+        self.harvest_data = self.harvest_data.loc[self.harvest_data['Program'] == 'CENSUS']
+        del self.harvest_data['Program']
 
         # Read in dataset containing county grain yield values
         self.yield_data = pandas.read_csv(yield_path,usecols=yield_cols)
 
         # Read in dataset containing county grain production values
         self.production_data = pandas.read_csv(production_path,usecols=production_cols)
+        self.production_data = self.production_data.loc[self.production_data['Program'] == 'CENSUS']
+        del self.production_data['Program']
 
         # Read in dataset containing county grain storage values
         self.storage_data = pandas.read_csv(storage_path,usecols=storage_cols)
@@ -42,16 +43,10 @@ class alldata:
         # Read in USDA to Water Footprint Network (WFN) commodity lookup table
         self.usda_to_wfn = pandas.read_csv(usda_to_wfn_path)
 
+        # Read in year variable
+        self.year = year
+
         # Manual cleaning unique to specific datasets
-        # Trim to contain only commodities existing for all available data
-        self.harvest_data = self.harvest_data[self.harvest_data['Data Item'].isin(harvest_trim_list)]
-        self.yield_data = self.yield_data[self.yield_data['Data Item'].isin(yield_trim_list)]       
-        self.production_data = self.production_data[self.production_data['Data Item'].isin(production_trim_list)]
-
-        # Replace 'WILD RICE' with 'RICE' to simplify comparison with WF data in future
-        self.harvest_data.loc[self.harvest_data['Commodity'] == 'WILD RICE','Commodity'] = 'RICE'
-        self.production_data.loc[self.production_data['Commodity'] == 'WILD RICE','Commodity'] = 'RICE'
-
         # Remove summary county codes: 888 (District) and 999 (State)
         self.county_codes = self.county_codes[-self.county_codes['County ANSI'].isin(['888','999'])][:-1]
         
@@ -68,21 +63,6 @@ class alldata:
         self.clean_data(self.production_data,'Production_Bu')
         self.clean_data(self.storage_data,'Storage_Bu')
 
-        # Convert Rice values to Bu from CWT (1 CWT ~ 2.22 Bu)
-        # Conversion info: https://www.omicnet.com/reports/past/archives/ca/tbl-1.pdf
-        self.production_data.loc[self.production_data['Commodity'] == 'RICE','Production_Bu'] = self.production_data.loc[self.production_data['Commodity'] == 'RICE','Production_Bu']*2.22
-
-        # Make sure yield and harvest data are available for the same commodities
-        # if len(self.harvest_data['Commodity']) != len(self.yield_data['Commodity']):
-        #     a_list = list( set(self.harvest_data['Commodity']) - set(self.yield_data['Commodity']) )
-        #     b_list = list( set(self.yield_data['Commodity']) - set(self.harvest_data['Commodity']) )
-        #     if len(a_list) > 0:
-        #         for a in a_list:
-        #             self.harvest_data = self.harvest_data[self.harvest_data['Commodity'] != a]
-        #     if len(b_list) > 0:
-        #         for b in b_list:
-        #             self.harvest_data = self.harvest_data[self.harvest_data['Commodity'] != b]
-
         # Create GEOID column for datasets
         self.create_geoid(self.county_codes)
         self.create_geoid(self.harvest_data)
@@ -90,28 +70,78 @@ class alldata:
         self.create_geoid(self.storage_data)
         self.create_geoid(self.production_data)
 
+        # Replace harvest 'WILD RICE' and 'SWEET RICE' with 'RICE' to simplify comparison with WF data in future
+        self.harvest_data.loc[self.harvest_data['Commodity'] == 'WILD RICE','Commodity'] = 'RICE'
+        self.harvest_data.loc[self.harvest_data['Commodity'] == 'SWEET RICE','Commodity'] = 'RICE'
+        self.harvest_data['Harvest_Acre'] = self.harvest_data.groupby(['GEOID','Commodity'])['Harvest_Acre'].transform('sum')
+        self.harvest_data = self.harvest_data.drop_duplicates(subset=(['GEOID','Commodity']))
+
+        # Replace production 'WILD RICE' and 'SWEET RICE' with 'RICE' to simplify comparison with WF data in future
+        # print self.production_data[self.production_data['GEOID'] == '06101']
+        self.production_data.loc[self.production_data['Commodity'] == 'WILD RICE','Commodity'] = 'RICE'
+        self.production_data.loc[self.production_data['Commodity'] == 'SWEET RICE','Commodity'] = 'RICE'
+        self.production_data['Production_Bu'] = self.production_data.groupby(['GEOID','Commodity'])['Production_Bu'].transform('sum')
+        self.production_data = self.production_data.drop_duplicates(subset=(['GEOID','Commodity']))
+
+        # Convert Rice production values to Bu from CWT (1 CWT ~ 2.22 Bu)
+        # Conversion info: https://www.omicnet.com/reports/past/archives/ca/tbl-1.pdf
+        self.production_data.loc[self.production_data['Commodity'] == 'RICE','Production_Bu'] = self.production_data.loc[self.production_data['Commodity'] == 'RICE','Production_Bu']*2.22
+        # print self.production_data[self.production_data['GEOID'] == '06101']
+
+        # Convert Rice yield values to Bu/Acre from Lb/Acre (45 Lbs ~ 1 Bu)
+        # Conversion info: ftp://www.ilga.gov/JCAR/AdminCode/008/00800600ZZ9998bR.html 
+        self.yield_data.loc[self.yield_data['Commodity'] == 'RICE','Yield_Bu_per_Acre'] = self.yield_data.loc[self.yield_data['Commodity'] == 'RICE','Yield_Bu_per_Acre']/45.
+        # print self.production_data[self.production_data['GEOID'] == '06101']
+
+        # Trim to contain only commodities existing for all available data
+        self.harvest_data = self.harvest_data[self.harvest_data['Data Item'].isin(harvest_trim_list)]
+        self.yield_data = self.yield_data[self.yield_data['Data Item'].isin(yield_trim_list)]       
+        self.production_data = self.production_data[self.production_data['Data Item'].isin(production_trim_list)]
+
+        # Make sure harvest and yield data are available for the same commodities
+        if len(self.harvest_data['Commodity']) != len(self.yield_data['Commodity']):
+            a_list = list( set(self.harvest_data['Commodity']) - set(self.yield_data['Commodity']) )
+            b_list = list( set(self.yield_data['Commodity']) - set(self.harvest_data['Commodity']) )
+            if len(a_list) > 0:
+                for a in a_list:
+                    self.harvest_data = self.harvest_data[self.harvest_data['Commodity'] != a]
+            if len(b_list) > 0:
+                for b in b_list:
+                    self.harvest_data = self.harvest_data[self.harvest_data['Commodity'] != b]
+
+        # Make sure harvest and production data are available for the same commodities
+        if len(self.harvest_data['Commodity']) != len(self.production_data['Commodity']):
+            a_list = list( set(self.harvest_data['Commodity']) - set(self.production_data['Commodity']) )
+            b_list = list( set(self.production_data['Commodity']) - set(self.harvest_data['Commodity']) )
+            if len(a_list) > 0:
+                for a in a_list:
+                    self.harvest_data = self.harvest_data[self.harvest_data['Commodity'] != a]
+            if len(b_list) > 0:
+                for b in b_list:
+                    self.harvest_data = self.harvest_data[self.harvest_data['Commodity'] != b]
+
         # Stretch yield and harvest data out
         # self.harvest_data = self.stretch(self.harvest_data,'Harvest_Acre') # don't want this
-        self.yield_data = self.stretch(self.yield_data,'Yield_Bu_per_Acre','stretched_yield_data_2012.csv')
-        self.production_data = self.stretch(self.production_data,'Production_Bu','stretched_production_data_2012.csv')
+        self.yield_data = self.stretch(self.yield_data,'Yield_Bu_per_Acre','stretched_yield_data_{0}.csv'.format(self.year))
+        self.production_data = self.stretch(self.production_data,'Production_Bu','stretched_production_data_{0}.csv'.format(self.year))
 
         # Get fractional harvest distribution
         self.harvest_data = self.harvest_fraction()
 
         # Add place-holders for all geoid-commodity pairs not currently represented
-        self.harvest_data = self.fill_data(self.harvest_data,'harvest','filled_harvest_data_2012.csv')
-        self.yield_data = self.fill_data(self.yield_data,'yield','filled_yield_data_2012.csv')
-        self.production_data = self.fill_data(self.production_data,'production','filled_production_data_2012.csv')
-        # self.storage_data = self.fill_data(self.storage_data,'storage','filled_storage_data_2012.csv')
+        self.harvest_data = self.fill_data(self.harvest_data,'harvest','filled_harvest_data_{0}.csv'.format(self.year))
+        self.yield_data = self.fill_data(self.yield_data,'yield','filled_yield_data_{0}.csv'.format(self.year))
+        self.production_data = self.fill_data(self.production_data,'production','filled_production_data_{0}.csv'.format(self.year))
+        # self.storage_data = self.fill_data(self.storage_data,'storage','filled_storage_data_{0}.csv'.format(self.year))
 
         # Retrieve VWC values
         self.vwc_data = self.get_vwc('bl','vwc_data.csv') # bl = blue; gn = irrigated green; rf = rainfed green       
         
         # Create comprehensive database for all data
-        finaldf = self.summary_df('preliminary_summary_data.csv')
+        summarydf = self.summary_df('summary_data_{0}.csv'.format(self.year))
 
         # Calculate VWS
-        vws = self.calculate_vws(finaldf,'vws_final_data.csv')
+        vws = self.calculate_vws(summarydf,'final_data_{0}.csv'.format(self.year))
 
     ### CLEAN UP DATA ###
     def clean_data(self,dataset,value_rename):
@@ -143,7 +173,7 @@ class alldata:
 
     # Dis-aggregate data from 'other counties' to all existing counties
     def stretch(self,dataset,value,path):
-        path = 'script_outputs/{0}'.format(path)
+        path = 'county_outputs/{0}'.format(path)
         if os.path.isfile(path):
             print 'Loading stretched_data file found at {0}'.format(path)
             dfnew = pandas.read_csv(path,usecols=dataset.columns)
@@ -190,7 +220,7 @@ class alldata:
 
     # Fill dataset with all potential pairs
     def fill_data(self,dataset,datatype,path):
-        path = 'script_outputs/{0}'.format(path)
+        path = 'county_outputs/{0}'.format(path)
         if os.path.isfile(path):
             print 'Loading fill_data file found at {0}'.format(path)
             dfnew = pandas.read_csv(path)
@@ -225,7 +255,7 @@ class alldata:
 
     # Create VWC dataframe
     def get_vwc(self,watertype,path):
-        path = 'script_outputs/{0}'.format(path)
+        path = 'county_outputs/{0}'.format(path)
         if os.path.isfile(path):
             print 'Loading vwc_data file found at {0}'.format(path)
             df = pandas.read_csv(path)
@@ -237,10 +267,10 @@ class alldata:
             # Create list of (geoid,wfn_code,commodity) pairs to iterate over
             geoids = sorted(self.county_codes['GEOID'].unique())
             commodities = sorted(set([re.findall(r'[\w]+',i)[0] for i in yield_trim_list]))
-            wfn_codes = []
-            for c in commodities:
-                wfn = self.usda_to_wfn[self.usda_to_wfn['usda'] == c]['wfn_code'].values[0]
-                wfn_codes.append(wfn)
+            # wfn_codes = []
+            # for c in commodities:
+            #     wfn = self.usda_to_wfn[self.usda_to_wfn['usda'] == c]['wfn_code'].values[0]
+            #     wfn_codes.append(wfn)
             indices = itertools.product(geoids,commodities)
     
             # Select type of water to use for Virtual Water Content (VWC) of commodities in each country
@@ -253,7 +283,7 @@ class alldata:
                 w = self.usda_to_wfn[self.usda_to_wfn['usda'] == c]['wfn_code'].values[0]
                 # print 'Adding GEOID {0} and Commodity {1}'.format(g,c)
                 f = 'cwu{0}_{1}'.format(w,watertype) # create correct file name
-                data_path = 'vwc_zonal_stats/output/' + f + '.csv'
+                data_path = 'vwc_zonal_stats/county_outputs/' + f + '.csv'
                 # Read in temporary dataframe for particular filename (based on WFN code and watertype)
                 df = pandas.read_csv(data_path,converters={'GEOID': lambda x: str(x)}) # Retains leading zeros in GEOIDs
                 tempdf = df
@@ -278,7 +308,7 @@ class alldata:
 
     # Create summary dataframe with all data organized by GEOID
     def summary_df(self,path):
-        path = 'script_outputs/{0}'.format(path)
+        path = 'county_outputs/{0}'.format(path)
         if os.path.isfile(path):
             print 'Loading summary_df file found at {0}'.format(path)
             df = pandas.read_csv(path)
@@ -288,21 +318,21 @@ class alldata:
             print 'Creating new summary_df file at {0}'.format(path)
             self.yield_data = self.yield_data.groupby(['GEOID','Commodity'],as_index=False)['Yield_Bu_per_Acre'].mean()
             self.production_data = self.production_data.groupby(['GEOID','Commodity'],as_index=False)['Production_Bu'].mean()
-            self.harvest_data = self.harvest_data.groupby(['GEOID','Commodity'],as_index=False)['Percent_Harvest'].mean()
+            self.harvest_data = self.harvest_data.groupby(['GEOID','Commodity','Harvest_Acre'],as_index=False)['Percent_Harvest'].mean()
     
             # Merge harvest_data and yield_data
             harvest_yield_data = self.harvest_data.merge(self.yield_data,on=['GEOID','Commodity'])
             harvest_yield_production_data = harvest_yield_data.merge(self.production_data,on=['GEOID','Commodity'])
     
             # Merge harvest_yield_data with vwc_data
-            finaldf = harvest_yield_production_data.merge(self.vwc_data,on=['GEOID','Commodity'])
+            summarydf = harvest_yield_production_data.merge(self.vwc_data,on=['GEOID','Commodity'])
             
             # Add storage data to dataframe
             geoids = sorted(self.county_codes['GEOID'].unique())
             for g in geoids:
                 s = self.storage_data[self.storage_data['GEOID'] == g]['Storage_Bu'].values
                 if len(s) == 0: s = 'NaN'
-                finaldf.loc[finaldf['GEOID']==g,'Storage_Bu'] = s
+                summarydf.loc[summarydf['GEOID']==g,'Storage_Bu'] = s
     
             # # Create list of (geoid,wfn_code) pairs to iterate over
             # commodities = sorted(set([re.findall(r'[\w]+',i)[0] for i in yield_trim_list]))
@@ -325,87 +355,95 @@ class alldata:
             #     # Retrieve VWC average for county in question, and add to new column in dataframe
             #     if len(tempdf[tempdf['GEOID']==g]) == 0: vwc = 'NaN' 
             #     else: vwc = tempdf[tempdf['GEOID'] == g]['mean'].values[0] # Mean VWC of county and commodity
-            #     finaldf.loc[ (finaldf['GEOID'] == g) & (finaldf['Commodity'] == c), 'VWC_m3ha' ] = vwc # Add VWC to df
-    
-            finaldf.to_csv(path,index=False)
+            #     summarydf.loc[ (summarydf['GEOID'] == g) & (summarydf['Commodity'] == c), 'VWC_m3ha' ] = vwc # Add VWC to df
+            summarydf.replace(r'\s+', scipy.nan, regex=True,inplace=True)
+            summarydf.replace(0, scipy.nan,inplace=True)
+            summarydf.to_csv(path,index=False)
 
-        return finaldf
+        return summarydf
 
     # Calculate VW of storage 
     def calculate_vws(self,dataset,path):
-        path = 'script_outputs/{0}'.format(path)
+        path = 'county_outputs/{0}'.format(path)
         if os.path.isfile(path):
-            print 'Loading summary_df file found at {0}'.format(path)
+            print 'Loading final_df file found at {0}'.format(path)
             df = pandas.read_csv(path)
             df['GEOID'] = df['GEOID'].apply(lambda x: '{0:05g}'.format(x))
-            print 'Yield-based VWS (m3):      {0:,}'.format(long(df['VWS_m3_yield'].sum()))
-            print 'Production-based VWS (m3): {0:,}'.format(long(df['VWS_m3_prod'].sum()))
-            return df
         else: 
-            dataset = dataset.replace(r'\s+', scipy.nan, regex=True)
-            dataset['Percent_Harvest'] = pandas.to_numeric(dataset['Percent_Harvest'],errors='coerce')
-            dataset['Yield_Bu_per_Acre'] = pandas.to_numeric(dataset['Yield_Bu_per_Acre'],errors='coerce')
-            dataset['Production_Bu'] = pandas.to_numeric(dataset['Production_Bu'],errors='coerce')
-            dataset['VWC_m3ha']  = pandas.to_numeric(dataset['VWC_m3ha'],errors='coerce')
-            dataset['Storage_Bu'] = pandas.to_numeric(dataset['Storage_Bu'],errors='coerce')
-            # dataset = pandas.to_numeric(dataset[['Percent_Harvest','Yield_Bu_per_Acre','VWC_m3ha','Storage_Bu']],errors='coerce')
-            dataset['VWS_m3_yield'] = dataset['VWC_m3ha'] * ( 1. / dataset['Yield_Bu_per_Acre'] ) * dataset['Storage_Bu'] * dataset['Percent_Harvest'] * 0.405 # ha/acre
-            dataset['VWS_m3_prod'] = dataset['VWC_m3ha'] * ( dataset['ALAND_sqmeters'] / dataset['Production_Bu'] ) * dataset['Storage_Bu'] * dataset['Percent_Harvest'] * (0.0001) # ha/sqmeters
-            dataset.to_csv(path,index=False)
-            vws = dataset['VWS_m3_prod'].sum()
-            print 'Yield-based VWS (m3):      {0:,}'.format(long(dataset['VWS_m3_yield'].sum()))
-            print 'Production-based VWS (m3): {0:,}'.format(long(dataset['VWS_m3_prod'].sum()))
+            print 'Creating new final_df file at {0}'.format(path)
+            df = dataset.replace(r'\s+', scipy.nan, regex=True)
+            df['Harvest_Acre'] = pandas.to_numeric(df['Harvest_Acre'],errors='coerce')
+            df['Percent_Harvest'] = pandas.to_numeric(df['Percent_Harvest'],errors='coerce')
+            df['Yield_Bu_per_Acre'] = pandas.to_numeric(df['Yield_Bu_per_Acre'],errors='coerce')
+            df['Production_Bu'] = pandas.to_numeric(df['Production_Bu'],errors='coerce')
+            df['VWC_m3ha']  = pandas.to_numeric(df['VWC_m3ha'],errors='coerce')
+            df['Storage_Bu'] = pandas.to_numeric(df['Storage_Bu'],errors='coerce')
+            # df = pandas.to_numeric(df[['Percent_Harvest','Yield_Bu_per_Acre','VWC_m3ha','Storage_Bu']],errors='coerce')
+            df['VWS_m3_yield'] = df['VWC_m3ha'] * ( 1. / df['Yield_Bu_per_Acre'] ) * df['Storage_Bu'] * df['Percent_Harvest'] * 0.405 # ha/acre
+            df['VWS_m3_prod'] = df['VWC_m3ha'] * ( df['Harvest_Acre'] / df['Production_Bu'] ) * df['Storage_Bu'] * df['Percent_Harvest'] * 0.405 # ha/acre
+            df.replace(r'\s+', scipy.nan, regex=True,inplace=True)
+            df.replace(0, scipy.nan,inplace=True)
+            df.to_csv(path,index=False)
+        vws = df['VWS_m3_prod'].sum()
+        print '{0} Summary...'.format(self.year)
+        print '{0} Harvested Area (Acres):       {1:,}'.format(self.year,long(df['Harvest_Acre'].sum()))
+        print '{0} Production (Bu):              {1:,}'.format(self.year,long(df['Production_Bu'].sum()))
+        print '{0} Yield (Bu/Acre):              {1:,}'.format(self.year,long(df['Yield_Bu_per_Acre'].sum()))
+        print '{0} Production/Harvest (Bu/Acre): {1:,}'.format(self.year,long((df['Production_Bu']/df['Harvest_Acre']).sum()))
+        print '{0} Storage (Bu):                 {1:,}'.format(self.year,long(df['Storage_Bu'].sum()))
+        print '{0} VWC (m3):                     {1:,}'.format(self.year,long(df['VWC_m3ha'].sum()))
+        print '{0} Yield-based VWS (m3):         {1:,}'.format(self.year,long(df['VWS_m3_yield'].sum()))
+        print '{0} Production-based VWS (m3):    {1:,}'.format(self.year,long(df['VWS_m3_prod'].sum()))
         return vws
 
 if __name__ == '__main__':
-    # All paths and column specifications for data class
-    harvest_path = 'usda_nass_data/usda_county_harvest_census_2012.csv' # Census data is more complete than Survey data
-    harvest_cols = ['State','State ANSI','County','County ANSI','Ag District','Ag District Code','Commodity','Data Item','Value']
-    yield_path = 'usda_nass_data/usda_county_yield_2012.csv'
-    yield_cols = ['State','State ANSI','County','County ANSI','Ag District','Ag District Code','Commodity','Data Item','Value']
-    production_path = 'usda_nass_data/usda_county_production_census_2012.csv'
-    production_cols = ['State','State ANSI','County','County ANSI','Ag District','Ag District Code','Commodity','Data Item','Value']
-    storage_path = 'usda_nass_data/usda_county_storage_2012.csv' # Note: This data is overall grain storage; commodities not specified
-    storage_cols = ['State','State ANSI','County','County ANSI','Ag District','Ag District Code','Value']
-    codes_path = 'usda_nass_data/county_codes.csv'
-    areas_path = 'county_areas.csv'
+    # Select year for analysis
+    years_list = ['2002','2007','2012']
 
-    # Lists of commodities to trim dataframes to
-    harvest_trim_list = ['BARLEY - ACRES HARVESTED',
-        'CORN, GRAIN - ACRES HARVESTED',
-        'OATS - ACRES HARVESTED',
-        'SORGHUM, GRAIN - ACRES HARVESTED',
-        'RICE - ACRES HARVESTED',
-        'RYE - ACRES HARVESTED',
-        'WILD RICE - ACRES HARVESTED', # later combined with rice
-        'WHEAT, SPRING, (EXCL DURUM) - ACRES HARVESTED', # later combined to wheat
-        'WHEAT, SPRING, DURUM - ACRES HARVESTED', # later combined to wheat
-        'WHEAT, WINTER - ACRES HARVESTED' # later combined to wheat
-        ]
-    yield_trim_list = ['BARLEY - YIELD, MEASURED IN BU / ACRE',
-        'CORN, GRAIN - YIELD, MEASURED IN BU / ACRE',
-        'OATS - YIELD, MEASURED IN BU / ACRE',
-        'SORGHUM, GRAIN - YIELD, MEASURED IN BU / ACRE',
-        'RICE - YIELD, MEASURED IN LB / ACRE',
-        'RYE - YIELD, MEASURED IN BU / ACRE',
-        'WHEAT, SPRING, DURUM - YIELD, MEASURED IN BU / ACRE', # later combined to wheat
-        'WHEAT, SPRING, (EXCL DURUM) - YIELD, MEASURED IN BU / ACRE', # later combined to wheat
-        'WHEAT, WINTER - YIELD, MEASURED IN BU / ACRE' # later combined to wheat
-        ]
-    production_trim_list = [
+    # Iterate over all years and perform analysis
+    for year in years_list:
+        # All paths and column specifications for data class
+        harvest_path = 'usda_nass_data/usda_county_harvest_{0}.csv'.format(year) # Census data is more complete than Survey data
+        harvest_cols = ['Program','State','State ANSI','County','County ANSI','Ag District','Ag District Code','Commodity','Data Item','Value']
+        yield_path = 'usda_nass_data/usda_county_yield_{0}.csv'.format(year)
+        yield_cols = ['State','State ANSI','County','County ANSI','Ag District','Ag District Code','Commodity','Data Item','Value']
+        production_path = 'usda_nass_data/usda_county_production_{0}.csv'.format(year)
+        production_cols = ['Program','State','State ANSI','County','County ANSI','Ag District','Ag District Code','Commodity','Data Item','Value']
+        storage_path = 'usda_nass_data/usda_county_storage_{0}.csv'.format(year) # Note: This data is overall grain storage; commodities not specified
+        storage_cols = ['State','State ANSI','County','County ANSI','Ag District','Ag District Code','Value']
+        codes_path = 'usda_nass_data/county_codes.csv'
+
+        # Lists of commodities to trim dataframes to
+        harvest_trim_list = ['BARLEY - ACRES HARVESTED',
+            'CORN, GRAIN - ACRES HARVESTED',
+            'OATS - ACRES HARVESTED',
+            'SORGHUM, GRAIN - ACRES HARVESTED',
+            'RICE - ACRES HARVESTED',
+            'RYE - ACRES HARVESTED',
+            'WILD RICE - ACRES HARVESTED', # later combined with rice
+            'WHEAT, SPRING, (EXCL DURUM) - ACRES HARVESTED', # later combined to wheat
+            'WHEAT, SPRING, DURUM - ACRES HARVESTED', # later combined to wheat
+            'WHEAT, WINTER - ACRES HARVESTED' # later combined to wheat
+            ]
+        yield_trim_list = ['BARLEY - YIELD, MEASURED IN BU / ACRE',
+            'CORN, GRAIN - YIELD, MEASURED IN BU / ACRE',
+            'OATS - YIELD, MEASURED IN BU / ACRE',
+            'SORGHUM, GRAIN - YIELD, MEASURED IN BU / ACRE',
+            'RICE - YIELD, MEASURED IN LB / ACRE',
+            'RYE - YIELD, MEASURED IN BU / ACRE',
+            'WHEAT, SPRING, DURUM - YIELD, MEASURED IN BU / ACRE', # later combined to wheat
+            'WHEAT, SPRING, (EXCL DURUM) - YIELD, MEASURED IN BU / ACRE', # later combined to wheat
+            'WHEAT, WINTER - YIELD, MEASURED IN BU / ACRE' # later combined to wheat
+            ]
+        production_trim_list = ['BARLEY - PRODUCTION, MEASURED IN BU',
             'CORN, GRAIN - PRODUCTION, MEASURED IN BU',
             'OATS - PRODUCTION, MEASURED IN BU',
-            'RYE - PRODUCTION, MEASURED IN BU',
-            'WHEAT - PRODUCTION, MEASURED IN BU',
             'SORGHUM, GRAIN - PRODUCTION, MEASURED IN BU',
-            'BARLEY - PRODUCTION, MEASURED IN BU',
-            'MILLET, PROSO - PRODUCTION, MEASURED IN BU',
-            'TRITICALE - PRODUCTION, MEASURED IN BU',
             'RICE - PRODUCTION, MEASURED IN CWT',
+            'RYE - PRODUCTION, MEASURED IN BU',
             'WILD RICE - PRODUCTION, MEASURED IN CWT',
-            'BUCKWHEAT - PRODUCTION, MEASURED IN BU'
+            'WHEAT - PRODUCTION, MEASURED IN BU',
             ]
-    usda_to_wfn_path = 'usda_to_wfn.csv'
-    states_ignore = ['ALASKA','HAWAII']
-
-    data = alldata(harvest_path,harvest_cols,yield_path,yield_cols,production_path,production_cols,storage_path,storage_cols,harvest_trim_list,yield_trim_list,production_trim_list,codes_path,usda_to_wfn_path,states_ignore)
+        usda_to_wfn_path = 'usda_to_wfn.csv'
+        states_ignore = ['ALASKA','HAWAII']
+        data = alldata(harvest_path,harvest_cols,yield_path,yield_cols,production_path,production_cols,storage_path,storage_cols,harvest_trim_list,yield_trim_list,production_trim_list,codes_path,usda_to_wfn_path,states_ignore,year)

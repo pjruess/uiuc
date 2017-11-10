@@ -1,5 +1,6 @@
 import rasterstats
 import geopandas
+import gdal
 
 # import gdal, ogr, osr, numpy
 # import sys
@@ -40,20 +41,29 @@ def zonal_stats_csv(polygon,raster,headers,filename):
 
 if __name__ == '__main__':
 	import os
-	polygon = '../cb_2016_us_county_500k/cb_2016_us_county_500k.shp'
-	headers = ['STATEFP','COUNTYFP','GEOID','NAME','ALAND','mean']
-	# raster_names = [f for f in os.listdir('raw_tiffs/') if f.endswith('.tif')]
-        # Override raster_names to only include names relevant to grain_storage research
-        import pandas
-        u2w = pandas.read_csv('../usda_to_wfn.csv')
-        raster_names = ['cwu{0}_bl.tif'.format(x) for x in u2w['wfn_code'].values]#'cwu103_bl','cwu71_bl','cwu15_bl','cwu75_bl','cwu83_bl','cwu44_bl','cwu27_bl','cwu97_bl','cwu79_bl','cwu89_bl']
-        print raster_names
-	for r in raster_names:
-		filename = 'output/{0}.csv'.format(r.split('.')[0])
-                print filename
-		raster = 'raw_tiffs/{0}'.format(r)
-		zonal_stats_csv(
-			polygon=polygon,
-			raster=raster,
-			headers=headers,
-			filename=filename)
+	polygon = 'cb_2016_us_county_500k/cb_2016_us_county_500k.shp'
+        raster_path = os.path.join( os.path.expanduser('~'), 'Downloads', 'nlcd_2011_landcover_2011_edition_2014_10_10', 'nlcd_2011_landcover_2011_edition_2014_10_10.img' )
+	# headers = ['STATEFP','COUNTYFP','GEOID','NAME','ALAND','mean']
+	filename = 'script_outputs/nlcd_2011_rasterstats.csv'
+        
+        
+
+        raster = gdal.Open(raster_path)
+        print type(raster)
+        raster_array = raster.ReadAsArray()
+        print raster_array
+        import numpy
+        print numpy.sum(raster_array)
+
+        # 597234572
+        # 509321599181
+
+        stats = rasterstats.zonal_stats(polygon,raster_path)#,stats='count')
+        print stats
+
+        1/0
+	zonal_stats_csv(
+		polygon=polygon,
+		raster=raster,
+		headers=headers,
+		filename=feilename)

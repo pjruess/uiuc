@@ -10,11 +10,6 @@ library(RColorBrewer)
 library(data.table)
 # library(latticeExtra)
 
-# PLOT STORAGE CAPACITY (BU, not m3)
-
-
-
-
 # Import polygon shapefile: readOGR('path','filename')
 # No extension necessary (this function ONLY imports shapefiles)
 counties_data <- readOGR('cb_2016_us_county_500k/','cb_2016_us_county_500k')
@@ -35,7 +30,7 @@ plot_vws <- function(counties, vws, commodity, ncats=8) {
 		# 		 )
 		vws <- setDT(vws)[, lapply(.SD, sum, na.rm=TRUE), by=.(GEOID,Storage_Bu), .SDcols=c('Percent_Harvest','Yield_Bu_per_Acre','Production_Bu','VWC_m3ha','VWS_m3_yield','VWS_m3_prod')]
 		setDT(vws)
-		write.csv(vws,'aggregate_vws_data.csv')
+		write.csv(vws,'plots/aggregate_vws_data.csv')
 	# 	vws <- as.data.table(vws)
 	# 	vws <- vws[ , .(Total_Percent_Harvest=sum(Percent_Harvest),
 	# 			Total_Yield_Bu_per_Acre=sum(Yield_Bu_per_Acre),
@@ -62,13 +57,13 @@ plot_vws <- function(counties, vws, commodity, ncats=8) {
 
 	# Plot data
 	ggplot(map.df, aes(x=long,y=lat,group=group)) + 
-		geom_polygon(aes(fill=VWS_m3_prod)) + # sets what to display: VWS_m3_prod/yield, Storage_Bu, ...
+		geom_polygon(aes(fill=VWS_m3_yield)) + # sets what to display: VWS_m3_prod/yield, Storage_Bu, ...
 		coord_map(xlim=c(-125, -66),ylim=c(24, 50)) + 
 		scale_fill_distiller(palette='YlGnBu', direction=1, na.value='grey90') +
 		# scale_fill_gradient(low = '#ffffcc', high = '#ff4444', 
 		# 		    space = 'Lab', na.value = 'grey80',
 		# 		    guide = 'colourbar') +
-		labs(title='VWS Plot',x='',y='') +
+		labs(title=sprintf('Yield-based Virtual Water Storage (m3) for %s, 2012',commodity),x='',y='') +
 		theme(panel.grid.major=element_blank(), 
 		      panel.grid.minor=element_blank(), 
 		      panel.background=element_blank(), 
@@ -77,7 +72,7 @@ plot_vws <- function(counties, vws, commodity, ncats=8) {
 		      axis.ticks=element_blank())
 	
 	# Save plot
-	path <- sprintf('plots/vws_plot_%s.pdf',tolower(commodity))
+	path <- sprintf('plots/yield_vws_plot_%s.pdf',tolower(commodity))
 	ggsave(path)
 	print(sprintf('Plot saved to %s',path))
 	
