@@ -21,6 +21,13 @@ for c in countries:
         print '{0} not in recips'.format(c)
         df[c] = 0 # add empty row to df
 
+# print df.columns
+# Get rid of countries that donate nothing
+df['sum'] = df.sum(axis=1)
+df = df.sort_values('sum', ascending=False)
+df = df[df['sum'] != 0]
+print df
+
 # Save final matrix
 df = df.sort_index(axis=0) # sort rows alphabetically
 df = df.sort_index(axis=1) # sort columns alphabetically

@@ -17,3 +17,11 @@ g2 <- graph.data.frame(el,directed=T)
 # dev.off()
 
 t <- transitivity(g,type='global')
+t
+
+atri <- count_triangles(g)
+g
+atri
+
+
+
