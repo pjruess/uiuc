@@ -11,12 +11,12 @@ library(data.table)
 plot_vws <- function(states, vws, commodity, year, identifier, label, ncats=8) {
 
 	# Define path to save to
-	path <- sprintf('state_plots/%s_%s_plot_%s.pdf', year, label, tolower(commodity))
+	path <- sprintf('state_plots/%s_%s_plot_%s.png', year, label, tolower(commodity))
 	
 	# If storage path already exists (since commodity is irrelevant), skip this plot
 	if (identifier == 'Storage_Bu') {
 		if (commodity != 'ALL'){ next }
-		path <- sprintf('state_plots/%s_%s_plot.pdf', year, label)
+		path <- sprintf('state_plots/%s_%s_plot.png', year, label)
 		if (file.exists(path)){
 			next
 		}
@@ -24,7 +24,7 @@ plot_vws <- function(states, vws, commodity, year, identifier, label, ncats=8) {
 
 	# If commodity is ALL, aggregate sum of vws df by State.ANSI 
 	if (commodity == 'ALL') {
-		vws <- setDT(vws)[, lapply(.SD, sum, na.rm=TRUE), by=.(State.ANSI,Storage_Bu), .SDcols=c('Percent_Harvest','Yield_Bu_per_Acre','Production_Bu','VWC_m3ha','VWS_m3_yield','VWS_m3_prod')]
+		vws <- setDT(vws)[, lapply(.SD, sum, na.rm=TRUE), by=.(State.ANSI,Storage_Bu), .SDcols=c('Harvest_Acre','Yield_Bu_per_Acre','Production_Bu','VWC_m3ha','VWS_m3_yield','VWS_m3_prod')]
 		setDT(vws)
 		vws[vws == 0] <- NA
 		write.csv(vws,sprintf('state_plots/%s_aggregate_%s_data.csv',year,label))
@@ -81,8 +81,8 @@ commodities <- c('BARLEY','CORN','OATS','RICE','RYE','SORGHUM','WHEAT','ALL')
 years <- c('2002','2007','2012')
 
 # List of identifiers and labels
-identifiers <- c('Storage_Bu','Percent_Harvest','Yield_Bu_per_Acre','Production_Bu','VWC_m3ha','VWS_m3_yield','VWS_m3_prod')
-labels <- c('storage','percent_harvest','yield','production','vwc','vws_yield','vws_production')
+identifiers <- c('Storage_Bu','Harvest_Acre','Yield_Bu_per_Acre','Production_Bu','VWC_m3ha','VWS_m3_yield','VWS_m3_prod')
+labels <- c('storage','harvest','yield','production','vwc','vws_yield','vws_production')
 df <- data.frame(identifiers, labels)
 print(df)
 
