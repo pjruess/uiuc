@@ -46,8 +46,11 @@ if __name__ == '__main__':
         # Override raster_names to only include names relevant to grain_storage research
         import pandas
         u2w = pandas.read_csv('../usda_to_wfn.csv')
-        raster_names = ['cwu{0}_bl.tif'.format(x) for x in u2w['wfn_code'].values]#'cwu103_bl','cwu71_bl','cwu15_bl','cwu75_bl','cwu83_bl','cwu44_bl','cwu27_bl','cwu97_bl','cwu79_bl','cwu89_bl']
+        raster_names = []
+        for i in ['bl','gr','gi']:
+            raster_names.append( ['cwu{0}_{1}.tif'.format(x,i) for x in u2w['wfn_code'].values] ) #'cwu103_bl','cwu71_bl','cwu15_bl','cwu75_bl','cwu83_bl','cwu44_bl','cwu27_bl','cwu97_bl','cwu79_bl','cwu89_bl']
         print raster_names
+        1/0
 	for r in raster_names:
 		filename = 'county_outputs/{0}.csv'.format(r.split('.')[0])
                 print filename
