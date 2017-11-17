@@ -120,7 +120,10 @@ class alldata:
         #         for b in b_list:
         #             self.harvest_data = self.harvest_data[self.harvest_data['Commodity'] != b]
 
-        # Stretch datasets out to dis-aggregate 'other' county values
+        # Read in commodities list
+        self.commodities = set( list(self.harvest_data['Commodity'].unique()) + list(self.yield_data['Commodity'].unique()) + list(self.production_data['Commodity'].unique()) )
+
+        # Stretch yield and harvest data out
         self.harvest_data = self.stretch(self.harvest_data,'Harvest_Acre','stretched_harvest_data_{0}.csv'.format(self.year))
         self.yield_data = self.stretch(self.yield_data,'Yield_Bu_per_Acre','stretched_yield_data_{0}.csv'.format(self.year))
         self.production_data = self.stretch(self.production_data,'Production_Bu','stretched_production_data_{0}.csv'.format(self.year))
@@ -173,7 +176,7 @@ class alldata:
 
     # Dis-aggregate data from 'other counties' to all existing counties
     def stretch(self,dataset,value,path):
-        path = 'county_outputs/{0}'.format(path)
+        path = 'county_outputs_test/{0}'.format(path)
         if os.path.isfile(path):
             print 'Loading stretched_data file found at {0}'.format(path)
             dfnew = pandas.read_csv(path,usecols=dataset.columns)
@@ -220,7 +223,7 @@ class alldata:
 
     # Fill dataset with all potential pairs
     def fill_data(self,dataset,datatype,path):
-        path = 'county_outputs/{0}'.format(path)
+        path = 'county_outputs_test/{0}'.format(path)
         if os.path.isfile(path):
             print 'Loading fill_data file found at {0}'.format(path)
             dfnew = pandas.read_csv(path)
@@ -229,12 +232,11 @@ class alldata:
         else:
             print 'Creating new fill_data file at {0}'.format(path)
             geoids = sorted(self.county_codes['GEOID'].unique())
-            commodities = sorted(set([re.findall(r'[\w]+',i)[0] for i in yield_trim_list]))
-            indices = itertools.product(geoids,commodities)
+            indices = itertools.product(geoids,self.commodities)
 
             # If storage, insert 'Commodity' column
-            if 'Commodity' not in dataset.columns:
-                dataset['Commodity'] = ''
+            # if 'Commodity' not in dataset.columns:
+            #     dataset['Commodity'] = ''
 
             # Create empty list and find column index for values
             newrows = []
@@ -250,12 +252,13 @@ class alldata:
                     newrows.append(temprow)
             dfnew = dataset.append(pandas.DataFrame(newrows,columns=dataset.columns))
             dfnew = dfnew.sort_values(['GEOID','Commodity'],ascending=[True,True])
+            dfnew.fillna(value=0,inplace=True)
             dfnew.to_csv(path,index=False)
             return dfnew
 
     # Create VWC dataframe
     def get_vwc(self,watertype,path):
-        path = 'county_outputs/{0}'.format(path)
+        path = 'county_outputs_test/{0}'.format(path)
         if os.path.isfile(path):
             print 'Loading vwc_data file found at {0}'.format(path)
             df = pandas.read_csv(path)
@@ -266,14 +269,13 @@ class alldata:
             print path
             # Create list of (geoid,wfn_code,commodity) pairs to iterate over
             geoids = sorted(self.county_codes['GEOID'].unique())
-            commodities = sorted(set([re.findall(r'[\w]+',i)[0] for i in yield_trim_list]))
             # wfn_codes = []
-            # for c in commodities:
+            # for c in self.commodities:
             #     wfn = self.usda_to_wfn[self.usda_to_wfn['usda'] == c]['wfn_code'].values[0]
             #     wfn_codes.append(wfn)
-            indices = itertools.product(geoids,commodities)
+            indices = itertools.product(geoids,self.commodities)
     
-            # Select type of water to use for Virtual Water Content (VWC) of commodities in each country
+            # Select type of water to use for Virtual Water Content (VWC) of self.commodities in each country
             watertype = 'bl' # bl = blue; gn = irrigated green; rf = rainfed green
     
             # Add VWC data to dataframe
@@ -308,7 +310,7 @@ class alldata:
 
     # Create summary dataframe with all data organized by GEOID
     def summary_df(self,path):
-        path = 'county_outputs/{0}'.format(path)
+        path = 'county_outputs_test/{0}'.format(path)
         if os.path.isfile(path):
             print 'Loading summary_df file found at {0}'.format(path)
             df = pandas.read_csv(path)
@@ -316,17 +318,28 @@ class alldata:
             return df
         else:
             print 'Creating new summary_df file at {0}'.format(path)
+
+            # Take average of duplicates to remove them from database
             self.yield_data = self.yield_data.groupby(['GEOID','Commodity'],as_index=False)['Yield_Bu_per_Acre'].mean()
             self.production_data = self.production_data.groupby(['GEOID','Commodity'],as_index=False)['Production_Bu'].mean()
             self.harvest_data = self.harvest_data.groupby(['GEOID','Commodity','Harvest_Acre'],as_index=False)['Percent_Harvest'].mean()
     
+            print '-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-'
+            print len(self.yield_data)
+            print len(self.production_data)
+            print len(self.harvest_data)
+
             # Merge harvest_data and yield_data
             harvest_yield_data = self.harvest_data.merge(self.yield_data,on=['GEOID','Commodity'])
             harvest_yield_production_data = harvest_yield_data.merge(self.production_data,on=['GEOID','Commodity'])
     
+            print len(harvest_yield_data)
+            print len(harvest_yield_production_data)
+
             # Merge harvest_yield_data with vwc_data
             summarydf = harvest_yield_production_data.merge(self.vwc_data,on=['GEOID','Commodity'])
-            
+            print len(summarydf)
+
             # Add storage data to dataframe
             geoids = sorted(self.county_codes['GEOID'].unique())
             for g in geoids:
@@ -335,14 +348,14 @@ class alldata:
                 summarydf.loc[summarydf['GEOID']==g,'Storage_Bu'] = s
     
             # # Create list of (geoid,wfn_code) pairs to iterate over
-            # commodities = sorted(set([re.findall(r'[\w]+',i)[0] for i in yield_trim_list]))
+            # self.commodities = sorted(set(dataset['Commodity'].unique()))
             # wfn_codes = []
-            # for c in commodities:
+            # for c in self.commodities:
             #     wfn = self.usda_to_wfn[self.usda_to_wfn['usda'] == c]['wfn_code'].values[0]
             #     wfn_codes.append(wfn)
-            # indices = itertools.product(geoids,wfn_codes,commodities)
+            # indices = itertools.product(geoids,wfn_codes,self.commodities)
     
-            # # Select type of water to use for Virtual Water Content (VWC) of commodities in each country
+            # # Select type of water to use for Virtual Water Content (VWC) of self.commodities in each country
             # watertype = 'bl' # bl = blue; gn = irrigated green; rf = rainfed green
     
             # # Add VWC data to dataframe
@@ -364,7 +377,7 @@ class alldata:
 
     # Calculate VW of storage 
     def calculate_vws(self,dataset,path):
-        path = 'county_outputs/{0}'.format(path)
+        path = 'county_outputs_test/{0}'.format(path)
         if os.path.isfile(path):
             print 'Loading final_df file found at {0}'.format(path)
             df = pandas.read_csv(path)
