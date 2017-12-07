@@ -74,38 +74,38 @@ income$GEOID <- formatC( income$GEO.id2, width=5, format='d', flag='0' )
 popul$GEOID <- formatC( popul$GEO.id2, width=5, format='d', flag='0' )
 
 if(!file.exists('linear_model_data.csv')){ # If file containing data summary doesn't exist, create it
-	data <- data.frame(GEOID=character(),PRODUCTION=numeric(),YIELD=numeric(),CWU=numeric(),LANDAREA=numeric(),INCOME=numeric(),POPULATION=numeric(),STORAGE=numeric(),VWC=numeric())
+		data <- data.frame(GEOID=character(),PRODUCTION=numeric(),YIELD=numeric(),CWU=numeric(),LANDAREA=numeric(),INCOME=numeric(),POPULATION=numeric(),STORAGE=numeric(),VWC=numeric())
 	for (g in unique(codes$GEOID)){
-		# Retrieve variables
-		p <- as.numeric(prod[prod$GEOID==g,]$Value) # Production
-		y <- as.numeric(yield[yield$GEOID==g,]$Value) # Yield
-		c <- as.numeric(cwu[cwu$GEOID==g,]$mean) # CWU
-		a <- as.numeric(cwu[cwu$GEOID==g,]$ALAND) #Land Area
-		i <- as.numeric(income[income$GEO.id2==g,]$HC02_EST_VC02) # Median Household Income
-		pop <- as.numeric(popul[popul$GEO.id2==g,]$respop72012) # Total Population
-		s <- as.numeric(stor[stor$GEOID==g,]$Value) # Storage
-		
-		# VWC [m^3] = Production [Bu] * Yield^-1 [Ac/Bu] * CWU [m^3/Ha] * Conversion [Ha/Ac]
-		u <- 0.404686 # [Ha/Ac]
-		v <- p / y * c * u # Virtual Water Content of Production
-		
-		# Change any zero values to 'NA' to allow dataframe writing
-		p <- ifelse(length(p)==0,NA,p)
-		y <- ifelse(length(y)==0,NA,y)
-		c <- ifelse(length(c)==0,NA,c)
-		a <- ifelse(length(a)==0,NA,a)
-		v <- ifelse(length(v)==0,NA,v)
-		i <- ifelse(length(i)==0,NA,i)
-		pop <- ifelse(length(pop)==0,NA,pop)
-		s <- ifelse(length(s)==0,NA,s)
-	
-		# Add items to dataframe
-		temp <- data.frame(GEOID=g, PRODUCTION=p, YIELD=y, CWU=c, LANDAREA=a, INCOME=i, POPULATION=pop, STORAGE=s,VWC=v)
-		data <- rbind( data, temp )
-	}
-	write.csv(data, 'linear_model_data.csv', row.names=FALSE)
+				# Retrieve variables
+				p <- as.numeric(prod[prod$GEOID==g,]$Value) # Production
+			y <- as.numeric(yield[yield$GEOID==g,]$Value) # Yield
+					c <- as.numeric(cwu[cwu$GEOID==g,]$mean) # CWU
+					a <- as.numeric(cwu[cwu$GEOID==g,]$ALAND) #Land Area
+							i <- as.numeric(income[income$GEO.id2==g,]$HC02_EST_VC02) # Median Household Income
+							pop <- as.numeric(popul[popul$GEO.id2==g,]$respop72012) # Total Population
+									s <- as.numeric(stor[stor$GEOID==g,]$Value) # Storage
+									
+									# VWC [m^3] = Production [Bu] * Yield^-1 [Ac/Bu] * CWU [m^3/Ha] * Conversion [Ha/Ac]
+									u <- 0.404686 # [Ha/Ac]
+											v <- p / y * c * u # Virtual Water Content of Production
+											
+											# Change any zero values to 'NA' to allow dataframe writing
+											p <- ifelse(length(p)==0,NA,p)
+													y <- ifelse(length(y)==0,NA,y)
+													c <- ifelse(length(c)==0,NA,c)
+															a <- ifelse(length(a)==0,NA,a)
+															v <- ifelse(length(v)==0,NA,v)
+																	i <- ifelse(length(i)==0,NA,i)
+																	pop <- ifelse(length(pop)==0,NA,pop)
+																			s <- ifelse(length(s)==0,NA,s)
+																		
+																			# Add items to dataframe
+																			temp <- data.frame(GEOID=g, PRODUCTION=p, YIELD=y, CWU=c, LANDAREA=a, INCOME=i, POPULATION=pop, STORAGE=s,VWC=v)
+																					data <- rbind( data, temp )
+																				}
+		write.csv(data, 'linear_model_data.csv', row.names=FALSE)
 } else { # If file containing data summary already exists, read it in
-	data <- read.csv('linear_model_data.csv')
+		data <- read.csv('linear_model_data.csv')
 	print('Data already exists; read in from current file')
 }
 
@@ -119,18 +119,18 @@ coms
 cat( 'ANOVA Test Results', file='anova_results.doc')
 print('Running ANOVA Tests...')
 for (i in seq( from=1, to=length(coms)/2) ) {
-	f <- paste( 'PRODUCTION~', paste( coms[1,i], coms[2,i], sep='*' ), sep='' )
+		f <- paste( 'PRODUCTION~', paste( coms[1,i], coms[2,i], sep='*' ), sep='' )
 	print(f)
-	# Two-way ANOVA to test significance of variables
-	# H1: Mean (first-term) is equal for all counties
-	# H2: Mean (second-term) is equal for all counties
-	# H3: There is no interaction between (first-term) and (second-term)
-	data.aov <- aov( data=data, formula=as.formula(f) )
-	# cat('\n\n', file='anova_results.txt', append=TRUE)
-	cat( paste( '\nFormula: ', f,'\n'), file='anova_results.doc', append=TRUE )
-	capture.output(summary(data.aov), file='anova_results.doc', append=TRUE)
-	cat('\n', file='anova_results.doc', append=TRUE)
-	# print(summary(data.aov))
+		# Two-way ANOVA to test significance of variables
+		# H1: Mean (first-term) is equal for all counties
+		# H2: Mean (second-term) is equal for all counties
+		# H3: There is no interaction between (first-term) and (second-term)
+		data.aov <- aov( data=data, formula=as.formula(f) )
+		# cat('\n\n', file='anova_results.txt', append=TRUE)
+		cat( paste( '\nFormula: ', f,'\n'), file='anova_results.doc', append=TRUE )
+			capture.output(summary(data.aov), file='anova_results.doc', append=TRUE)
+			cat('\n', file='anova_results.doc', append=TRUE)
+				# print(summary(data.aov))
 }
 print('ANOVA Tests Completed.')
 # NORMALIZE OVER AREA
@@ -139,13 +139,13 @@ print('ANOVA Tests Completed.')
 # Define Linear Model
 library(car)
 linear.model <- function(f,path){
-	print('Running Linear Model...')
+		print('Running Linear Model...')
 	print(f)
-	LM <<- lm(data=data,formula=as.formula(f)) # assign as global variable
-	cat('Linear Model Test Results\n', file=path)
-	cat( paste( 'Formula: ', f, '\n'), file=path, append=TRUE)
-	capture.output(summary(LM), file=path, append=TRUE)
-	print('Linear Model Created.')
+		LM <<- lm(data=data,formula=as.formula(f)) # assign as global variable
+		cat('Linear Model Test Results\n', file=path)
+			cat( paste( 'Formula: ', f, '\n'), file=path, append=TRUE)
+			capture.output(summary(LM), file=path, append=TRUE)
+				print('Linear Model Created.')
 }
 
 # First Linear Model
