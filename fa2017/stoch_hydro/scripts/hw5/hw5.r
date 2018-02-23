@@ -64,8 +64,6 @@ legend('topleft',
        legend=c('Temperature','Snow'),
        lty=c(1,1), col=c('lightgrey','blue'))
 
-
-
 # plot(df$time, df$snow, axes=F, xlab='',ylab='',type='l',lty=1,col='black',lwd=2,main='',
 #      ylim=c(min(df$snow),max(df$snow)), xlim=c(min(df$time),max(df$time)))
 # # col="blue", xlab='Datetime', ylab='', main='Snow and Temperature over Time' )
@@ -104,6 +102,12 @@ arima(df$snow, order=c(2,0,1), xreg=df$temp)
 
 # ARIMA model w/ p=1, d=1, and q=1
 arima(df$snow, order=c(1,1,1))
+
+# Automatically fit ARIMA
+library(fpp)
+auto.arima(df$snow,trace=TRUE)
+
+
 
 
 

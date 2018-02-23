@@ -42,7 +42,7 @@ qqline(SEC.stdres)
 # Shapiro test... 
 # Ho: resid~N(0,sigma)
 # Ha: resid not normally distributed
-shapiro.test(SEC.stdres) # p < alpha --> do not reject null (resid normally dist)
+shapiro.test(SEC.stdres) # p < alpha --> reject null (resid NOT normally dist)
 
 # Constant Variance
 # Visualize constant variance, manually

@@ -1,6 +1,6 @@
-rawdata<-read.csv("final_results/linear_model_data_steps.csv", header=TRUE)
+rawdata<-read.csv('WorldWaterStats.csv', header=TRUE)
 attach(rawdata)
-thedata<-data.frame(CWU_GN_RF_LOG, PRECIPITATION, DEWPOINT, MINVAPORPRES)
+thedata<-data.frame(INFMORT,as.numeric(REGION),IMDRINK,IMSAN)
 Labels<-names(thedata)[2:length(thedata)]
 multRegress<-function(mydata){
 numVar<<-NCOL(mydata)

@@ -47,22 +47,26 @@ def zonal_stats_csv(polygon,raster,headers,filename):
 if __name__ == '__main__':
     # Polygon path
     polygon = '../../../research/grain_storage/cb_2016_us_county_500k/cb_2016_us_county_500k.shp'
-    
-    # Convert raster from ascii to tif
-    # asc = 'data/PRISM_ppt_stable_4kmM3_2012_all_asc/PRISM_ppt_stable_4kmM3_2012_asc.asc'
-    # asc_to_tif = 'gdal_translate -of "GTiff" {0}.asc prism_precipitation_2012.tif'.format(asc.split('.')[0])
-    # print asc_to_tif
-    # import os
-    # os.sys(asc_to_tif)
-    raster = 'data/prism_elevation_1981-2010.tif'  # ascii raster path
-    
+
     # Extra information
     headers = ['STATEFP','COUNTYFP','GEOID','NAME','ALAND','mean']
-    filename = 'data/prism_elevation_1981-2010.csv'
+
+    # Convert rasters from ascii to tif
+    import os
+    from osgeo import gdal
+    for asc in os.listdir('data/prism_asciis'):
+        src_ds = gdal.Open( 'data/prism_asciis/{0}.asc'.format(asc.split('.')[0]) )
+        destName = 'data/prism_tifs/prism_{0}_{1}.tif'.format(asc.split('_')[1],asc.split('_')[4])
+        dst_ds = gdal.Translate(destName,src_ds,format='GTiff')
+        src_ds = None
+        dst_ds = None
     
     # Collect zonal statistics
-    zonal_stats_csv(
-    	polygon=polygon,
-    	raster=raster,
-    	headers=headers,
-    	filename=filename)
+    for tif in os.listdir('data/prism_tifs'):
+        raster = 'data/prism_tifs/{0}'.format(tif)
+        filename = 'data/prism_csvs/{0}.csv'.format( raster.split('/')[2].split('.')[0] )
+        zonal_stats_csv(
+    	    polygon=polygon,
+    	    raster=raster,
+    	    headers=headers,
+    	    filename=filename)
