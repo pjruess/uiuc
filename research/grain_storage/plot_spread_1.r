@@ -44,6 +44,9 @@ plot.bars <- function(commodity, geography, identifier, label) {
 		# plot.data <- setDT(plot.data)[, lapply(.SD, sum, na.rm=TRUE), by=.(State.ANSI,Storage_Bu), .SDcols=c('Harvest_Acre','Yield_Bu_per_Acre','Production_Bu','VWC_m3ha','VWS_m3_yield','VWS_m3_prod')]
 	}
 
+	# Convert zeros to NA
+	plot.data[plot.data<=0] <- NA
+
 	# Make plot
 	ggplot(plot.data, aes(x=group,y=value,fill=group)) + 
 		geom_boxplot() +
@@ -58,8 +61,14 @@ plot.bars <- function(commodity, geography, identifier, label) {
 # Select only by certain commodity
 commodities <- c('BARLEY','CORN','OATS','RICE','RYE','SORGHUM','WHEAT','ALL')
 
-identifiers <- c('Storage_Bu','Harvest_Acre','Yield_Bu_per_Acre','Production_Bu','VWC_m3ha','VWS_m3_yield','VWS_m3_prod')
-labels <- c('storage','harvest','yield','production','vwc','vws_yield','vws_production')
+identifiers <- c('Storage_Bu','Harvest_Acre','Yield_Bu_per_Acre','Production_Bu','CWU_bl_m3ha','CWU_gn_ir_m3ha','CWU_gn_rf_m3ha','VWS_bl_m3_yield','VWS_gn_ir_m3_yield','VWS_gn_rf_m3_yield','VWS_bl_m3_prod','VWS_gn_ir_m3_prod','VWS_gn_rf_m3_prod')
+labels <- c('storage','harvest','yield','production','cwu_blue','cwu_green_irrigated','cwu_green_rainfed','vws_yield_blue','vws_yield_green_irrigated','vws_yield_green_rainfed','vws_production_blue','vws_production_green_irrigated','vws_production_green_rainfed')
+
+
+# commodities <- c('ALL')
+# identifiers <- c('Storage_Bu','CWU_bl_m3ha')
+# labels <- c('storage','cwu_blue')
+
 df <- data.frame(identifiers, labels)
 
 for (c in commodities) {
