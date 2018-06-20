@@ -23,7 +23,7 @@ def zonal_stats_csv(polygon,raster,headers,filename):
 		geojson_out=True
 		)#,stats='count min mean max median')
 
-        # print stats[0]['properties']
+		# print stats[0]['properties']
 
 	# Default encoding to utf-8 for odd string characters
 	import sys
@@ -45,16 +45,16 @@ if __name__ == '__main__':
 	polygon = '../cb_2016_us_state_500k/cb_2016_us_state_500k.shp'
 	headers = ['STATEFP','NAME','ALAND','mean']
 	# raster_names = [f for f in os.listdir('raw_tiffs/') if f.endswith('.tif')]
-        # Override raster_names to only include names relevant to grain_storage research
-        import pandas
-        u2w = pandas.read_csv('../usda_to_wfn.csv')
-        raster_names = []
-        for i in ['bl','gn_ir','gn_rf']:
-            raster_names = raster_names + ['cwu{0}_{1}.tif'.format(x,i) for x in u2w['wfn_code'].values] #'cwu103_bl','cwu71_bl','cwu15_bl','cwu75_bl','cwu83_bl','cwu44_bl','cwu27_bl','cwu97_bl','cwu79_bl','cwu89_bl']
-        print raster_names
+		# Override raster_names to only include names relevant to grain_storage research
+	import pandas
+	u2w = pandas.read_csv('../usda_to_wfn.csv')
+	raster_names = []
+	for i in ['bl','gn_ir','gn_rf']:
+		raster_names = raster_names + ['cwu{0}_{1}.tif'.format(x,i) for x in u2w['wfn_code'].values] #'cwu103_bl','cwu71_bl','cwu15_bl','cwu75_bl','cwu83_bl','cwu44_bl','cwu27_bl','cwu97_bl','cwu79_bl','cwu89_bl']
+	print raster_names
 	for r in raster_names:
 		filename = 'state_outputs/{0}.csv'.format(r.split('.')[0])
-                print filename
+		print filename
 		raster = 'raw_tiffs/{0}'.format(r)
 		zonal_stats_csv(
 			polygon=polygon,

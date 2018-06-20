@@ -306,37 +306,43 @@ class alldata:
 
             # Create list of (geoid,wfn_code,commodity) pairs to iterate over
             geoids = sorted(self.county_codes['GEOID'].unique())
-            commodities = set([i.split(',')[0] for i in self.production_data['Commodity'].unique()])
+            #commodities = set([i.split(',')[0] for i in self.production_data['Commodity'].unique()])
+            commodities = self.production_data['Commodity'].unique()
             indices = itertools.product(geoids,commodities)
     
             # Select type of water to use for Crop Water Content (CWU) of self.commodities in each county
             watertypes = ['bl','gn_ir','gn_rf'] # bl = blue; ir = irrigated green; rf = rainfed green
     
+            # Read in CWU data
+            def clean_cwu(cwu_path):
+                tempdf = pandas.read_csv(cwu_path)
+                tempdf['GEOID'] = tempdf['GEOID'].apply(lambda x: '{0:05g}'.format(x))
+                tempdf.rename(columns=lambda x: x.strip(),inplace=True)#tempdf.columns.str.replace(' ','')
+                return tempdf
+
+            cwu_bl = clean_cwu('cwu_plots/marston_cwu_bl.csv')
+            cwu_gn_ir = clean_cwu('cwu_plots/marston_cwu_gn_ir.csv')
+            cwu_gn_rf = clean_cwu('cwu_plots/marston_cwu_gn_rf.csv')
+
+            cwu_dfs = [cwu_bl, cwu_gn_ir, cwu_gn_rf]
+            
             # Add CWU data to dataframe
             # Iterate over (GEOID, WFN Code) pairs to retrieve CWU values from CWU csv files
             newrows = []
             for g,c in indices:
-                w = self.usda_to_wfn[self.usda_to_wfn['usda'] == c]['wfn_code'].values[0]
-
                 # Iterate over water types
                 cwu_list = [] # list of bl, gn_ir, and gn_rf
-                for wtype in watertypes:
-                    f = 'cwu{0}_{1}'.format(w,wtype) # create correct file name
-                    data_path = 'cwu_zonal_stats/county_outputs/' + f + '.csv'
-                    # Read in temporary dataframe for particular filename (based on WFN code)
-                    dfnew = pandas.read_csv(data_path,converters={'GEOID': lambda x: str(x)}) # Retains leading zeros in
-                    tempdf = dfnew
-
+                for tempdf in cwu_dfs:
                     # Retrieve CWU average for county in question, and add to new column in dataframe
-                    if ((len(tempdf[tempdf['GEOID']==g]) == 0) or not (tempdf[tempdf['GEOID']==g]['mean'].values[0])): 
+                    if ((len(tempdf[tempdf['GEOID']==g]) == 0) or not (tempdf[tempdf['GEOID']==g][c].values[0])): 
                         cwu_list.append( 'NaN' ) 
                         aland = 'NaN'
                     else: 
-                        cwu_list.append( tempdf[tempdf['GEOID'] == g]['mean'].values[0] ) # Mean CWU, county & commodity
+                        cwu_list.append( tempdf[tempdf['GEOID'] == g][c].values[0] ) # Mean CWU, county & commodity
                         aland = tempdf[tempdf['GEOID'] == g]['ALAND'].values[0] # ALAND in sq meters
                 temprow = [g, c, cwu_list[0], cwu_list[1], cwu_list[2], aland]
                 newrows.append(temprow)
-                print 'Completed {0}'.format(f.split('_')[0])
+                print g 
 
             # Create dataframe from newrows data
             cols = ['GEOID','Commodity','CWU_bl_m3ha','CWU_gn_ir_m3ha','CWU_gn_rf_m3ha','ALAND_sqmeters']

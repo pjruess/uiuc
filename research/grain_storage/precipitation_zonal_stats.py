@@ -17,7 +17,8 @@ def zonal_stats_csv(polygon,raster,headers,filename):
 	stats = rasterstats.zonal_stats(
 		polygon,
 		raster,
-		stats='mean',
+		#stats='mean',
+                stats=('sum','mean'),
 		# copy_properties=True
 		# categorical=True
 		geojson_out=True
@@ -39,23 +40,20 @@ def zonal_stats_csv(polygon,raster,headers,filename):
 			f.write('\n')
 
 if __name__ == '__main__':
-	import os
-	polygon = '../cb_2016_us_county_500k/cb_2016_us_county_500k.shp'
-	headers = ['STATEFP','COUNTYFP','GEOID','NAME','ALAND','mean']
-	# raster_names = [f for f in os.listdir('raw_tiffs/') if f.endswith('.tif')]
-	# Override raster_names to only include names relevant to grain_storage research
 	import pandas
-	u2w = pandas.read_csv('../usda_to_wfn.csv')
-	raster_names = []
-	for i in ['bl','gn_ir','gn_rf']:
-		raster_names = raster_names + ['cwu{0}_{1}.tif'.format(x,i) for x in u2w['wfn_code'].values] #'cwu103_bl','cwu71_bl','cwu15_bl','cwu75_bl','cwu83_bl','cwu44_bl','cwu27_bl','cwu97_bl','cwu79_bl','cwu89_bl']
-	print raster_names
-	for r in raster_names:
-		filename = 'county_outputs/{0}.csv'.format(r.split('.')[0])
-		print filename
-		raster = 'raw_tiffs/{0}'.format(r)
+	import itertools
+	h = ['STATEFP','COUNTYFP','GEOID','NAME','ALAND','sum','mean']
+	years = ['2002','2007','2012']
+	polygons = ['county','state']
+	for year, poly in list(itertools.product(years,polygons)):
+		p = 'cb_2016_us_{0}_500k/cb_2016_us_{0}_500k.shp'.format(poly)
+		r = 'precipitation_data/PRISM_ppt_stable_4kmM3_{0}_all_asc/PRISM_ppt_stable_4kmM3_{0}_asc.asc'.format(year)
+		f = 'precipitation_data/{0}_{1}_precip.csv'.format(year,poly)
+		h = []
+		if poly == 'county': h = ['STATEFP','COUNTYFP','GEOID','NAME','ALAND','sum','mean']
+		elif poly == 'state': h = ['STATEFP','NAME','ALAND','sum','mean']
 		zonal_stats_csv(
-			polygon=polygon,
-			raster=raster,
-			headers=headers,
-			filename=filename)
+			polygon=p,
+			raster=r,
+			headers=h,
+			filename=f)

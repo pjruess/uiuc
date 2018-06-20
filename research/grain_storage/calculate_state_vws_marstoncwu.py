@@ -259,39 +259,44 @@ class alldata:
             print 'Creating new cwu_data file at {0}'.format(path)
 
             # Create list of (state_ansi,wfn_code,commodity) pairs to iterate over
-	    stateids = sorted(self.county_codes['State ANSI'].unique())
-	    commodities = set([i.split(',')[0] for i in self.production_data['Commodity'].unique()])
+            stateids = ['{0:02g}'.format(s) for s in sorted(self.county_codes['State ANSI'].unique())]
+	    #commodities = set([i.split(',')[0] for i in self.production_data['Commodity'].unique()])
+            commodities = self.production_data['Commodity'].unique()
 	    indices = itertools.product(stateids,commodities)
 
 	    # Select type of water to use for Crop Water Content (CWU) of commodities in each state
 	    watertypes = ['bl','gn_ir','gn_rf'] # bl = blue; ir = irrigated green; rf = rainfed green
 	
+            # Read in CWU data
+            def clean_cwu(cwu_path):
+                tempdf = pandas.read_csv(cwu_path)
+                tempdf['STATEFP'] = tempdf['STATEFP'].apply(lambda x: '{0:02g}'.format(x))
+                tempdf.rename(columns=lambda x: x.strip(),inplace=True)#tempdf.columns.str.replace(' ','')
+                return tempdf
+
+            cwu_bl = clean_cwu('cwu_plots/marston_cwu_bl.csv')
+            cwu_gn_ir = clean_cwu('cwu_plots/marston_cwu_gn_ir.csv')
+            cwu_gn_rf = clean_cwu('cwu_plots/marston_cwu_gn_rf.csv')
+
+            cwu_dfs = [cwu_bl, cwu_gn_ir, cwu_gn_rf]
+
             # Add CWU data to dataframe
 	    # Iterate over (State ANSI, WFN Code) pairs to retrieve CWU values from CWU csv files
 	    newrows = []
 	    for s,c in indices:
-	        s = '{0:02g}'.format(s)
-	        w = self.usda_to_wfn[self.usda_to_wfn['usda'] == c]['wfn_code'].values[0]
-
                 # Iterate over water types
-		cwu_list = []
-		for wtype in watertypes:
-		    f = 'cwu{0}_{1}'.format(w,wtype) # create correct file name
-		    data_path = 'cwu_zonal_stats/state_outputs/' + f + '.csv'
-                    # Read in temporary dataframe for particular filename (based on WFN code)
-		    dfnew = pandas.read_csv(data_path,converters={'STATEFP': lambda x: str(x)}) # Retains leading zeros in
-		    tempdf = dfnew
-
+                cwu_list = [] # list of bl, gn_ir, and gn_rf
+                for tempdf in cwu_dfs:
 		    # Retrieve CWU average for state in question, and add to new column in dataframe
-		    if ((len(tempdf[tempdf['STATEFP']==s]) == 0) or not (tempdf[tempdf['STATEFP']==s]['mean'].values[0])): 
+		    if ((len(tempdf[tempdf['STATEFP']==s]) == 0) or not (tempdf[tempdf['STATEFP']==s][c].values[0])): 
 		        cwu_list.append( 'NaN' ) 
 			aland = 'NaN'
 		    else: 
-		        cwu_list.append( tempdf[tempdf['STATEFP'] == s]['mean'].values[0] ) # Mean CWU, state and commodity
+		        cwu_list.append( tempdf[tempdf['STATEFP'] == s][c].values[0] ) # Mean CWU, state and commodity
 			aland = tempdf[tempdf['STATEFP'] == s]['ALAND'].values[0] # ALAND in sq meters
                 temprow = [s, c, cwu_list[0], cwu_list[1], cwu_list[2], aland]
 		newrows.append(temprow)
-		print 'Completed {0}'.format(f.split('_')[0])
+                print s 
 
 	    # Create dataframe from newrows data
 	    cols = ['State ANSI','Commodity','CWU_bl_m3ha','CWU_gn_ir_m3ha','CWU_gn_rf_m3ha','ALAND_sqmeters']
