@@ -18,7 +18,7 @@ def zonal_stats_csv(polygon,raster,headers,filename):
 		polygon,
 		raster,
 		#stats='mean',
-                stats=('sum','mean'),
+                stats=('sum','mean','count'),
 		# copy_properties=True
 		# categorical=True
 		geojson_out=True
@@ -42,16 +42,16 @@ def zonal_stats_csv(polygon,raster,headers,filename):
 if __name__ == '__main__':
 	import pandas
 	import itertools
-	h = ['STATEFP','COUNTYFP','GEOID','NAME','ALAND','sum','mean']
+	h = ['STATEFP','COUNTYFP','GEOID','NAME','ALAND','sum','mean','count']
 	years = ['2002','2007','2012']
 	polygons = ['county','state']
 	for year, poly in list(itertools.product(years,polygons)):
 		p = 'cb_2016_us_{0}_500k/cb_2016_us_{0}_500k.shp'.format(poly)
 		r = 'precipitation_data/PRISM_ppt_stable_4kmM3_{0}_all_asc/PRISM_ppt_stable_4kmM3_{0}_asc.asc'.format(year)
-		f = 'precipitation_data/{0}_{1}_precip.csv'.format(year,poly)
+		f = 'raw_data/{0}_{1}_precip.csv'.format(year,poly)
 		h = []
-		if poly == 'county': h = ['STATEFP','COUNTYFP','GEOID','NAME','ALAND','sum','mean']
-		elif poly == 'state': h = ['STATEFP','NAME','ALAND','sum','mean']
+		if poly == 'county': h = ['STATEFP','COUNTYFP','GEOID','NAME','ALAND','sum','mean','count']
+		elif poly == 'state': h = ['STATEFP','NAME','ALAND','sum','mean','count']
 		zonal_stats_csv(
 			polygon=p,
 			raster=r,

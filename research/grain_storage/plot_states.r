@@ -11,6 +11,8 @@ library(stringr) # for str_replace_all
 
 plot_vws <- function(states, vws, commodity, year, identifier, label, mmdata, ncats=8) {
 
+    ### Pre-process data and define useful functions
+
 	# Define path to save to
 	path <- sprintf('state_plots/%s/%s_%s_%s.png', tolower(commodity), year, tolower(commodity), label)
 	
@@ -23,30 +25,25 @@ plot_vws <- function(states, vws, commodity, year, identifier, label, mmdata, nc
 	# If commodity is 'total', aggregate sum of vws df by GEOID 
 	if (commodity == 'total') {
 		vws <- setDT(vws)[, 
-			.(Irrigated_Harvest_Acre = mean(Irrigated_Harvest_Acre,na.rm=TRUE), 
-			Rainfed_Harvest_Acre = mean(Rainfed_Harvest_Acre,na.rm=TRUE), 
-			Irrigated_Percent_Harvest = sum(Irrigated_Percent_Harvest,na.rm=TRUE), 
-			Rainfed_Percent_Harvest = sum(Rainfed_Percent_Harvest,na.rm=TRUE), 
-			#Yield_Bu_per_Acre = mean(Yield_Bu_per_Acre,na.rm=TRUE), 
+			.(Harvest_Ac = sum(Harvest_Ac,na.rm=TRUE), 
+			Percent_Harvest = sum(Percent_Harvest,na.rm=TRUE), 
 			Production_Bu = sum(Production_Bu,na.rm=TRUE), 
 			Storage_Bu = mean(Storage_Bu,na.rm=TRUE), 
-			CWU_bl_m3ha = mean(CWU_bl_m3ha,na.rm=TRUE), 
-			CWU_gn_ir_m3ha = mean(CWU_gn_ir_m3ha,na.rm=TRUE), 
-			CWU_gn_rf_m3ha = mean(CWU_gn_rf_m3ha,na.rm=TRUE), 
-			CWU_bl_and_gn_ir_m3ha = mean(CWU_bl_and_gn_ir_m3ha,na.rm=TRUE), 
+			CWU_bl_m3yr = sum(CWU_bl_m3yr,na.rm=TRUE), 
+			CWU_gn_m3yr = sum(CWU_gn_m3yr,na.rm=TRUE), 
+			CWU_m3yr = sum(CWU_m3yr,na.rm=TRUE), 
 			VWS_ir_m3 = sum(VWS_ir_m3,na.rm=TRUE), 
 			VWS_rf_m3 = sum(VWS_rf_m3,na.rm=TRUE), 
 			VWS_m3 = sum(VWS_m3,na.rm=TRUE), 
 			Precipitation_mm = mean(Precipitation_mm,na.rm=TRUE), 
-			Precipitation_Volume_km3 = mean(Precipitation_Volume_km3,na.rm=TRUE), 
+			Precipitation_Volume_km3 = sum(Precipitation_Volume_km3,na.rm=TRUE), 
 			Capture_Efficiency = sum(Capture_Efficiency,na.rm=TRUE)), 
 			by = State.ANSI  
 		]
-		#vws <- setDT(vws)[, lapply(.SD, sum, na.rm=TRUE), by=.(State.ANSI,Storage_Bu), .SDcols=c('Irrigated_Harvest_Acre','Rainfed_Harvest_Acre','Irrigated_Percent_Harvest','Rainfed_Percent_Harvest','Yield_Bu_per_Acre','Production_Bu','CWU_bl_m3ha','CWU_gn_ir_m3ha','CWU_gn_rf_m3ha','CWU_bl_and_gn_ir_m3ha','VWS_ir_m3','VWS_rf_m3','VWS_m3','Precipitation_km','Precipitation_Volume_km3','Capture_Efficiency')]
 		#setDT(vws)
-		vws$Yield_Bu_per_Acre <- vws$Production_Bu / ( vws$Irrigated_Harvest_Acre + vws$Rainfed_Harvest_Acre )
+		vws$Yield_Bu_per_Ac <- vws$Production_Bu / vws$Harvest_Ac
 		vws <- data.frame(vws)
-		write.csv(vws,sprintf('state_plot_aggregates/%s_aggregate_%s_data.csv',year,label),row.names=FALSE)
+		#write.csv(vws,sprintf('state_plot_aggregates/%s_aggregate_%s_data.csv',year,label),row.names=FALSE)
 	} else {
 		vws <- vws[ which( vws$Commodity == commodity ), ]
 	}
@@ -63,7 +60,8 @@ plot_vws <- function(states, vws, commodity, year, identifier, label, mmdata, nc
 		next
 	}
 
-	cwu_ids <- c('CWU_bl_m3ha','CWU_gn_ir_m3ha','CWU_gn_rf_m3ha')
+    # Take min/max for all CWU data for consistent plotting (with same scales)
+	cwu_ids <- c('CWU_bl_m3yr','CWU_gn_m3yr','CWU_m3yr')
 	if(identifier %in% cwu_ids){
 		mmdata.sub <- mmdata[mmdata$Commodity == commodity & mmdata$Identifier %in% cwu_ids, ]
 	} else {
@@ -79,19 +77,24 @@ plot_vws <- function(states, vws, commodity, year, identifier, label, mmdata, nc
 	maxima <- max(mmdata.sub$Maxima,na.rm=T)
 
 	if (minima == floor(minima)){
-		minima <- minima - 1
-		#if (minima < 0) {
-		#	minima <- 0
-		#}
+		minima <- minima - 1 # subtract 1 to ensure minima is within plot limits
 	} else {
 		minima <- floor(minima)
 	}
 
 	if (maxima == ceiling(maxima)){
-		maxima <- maxima + 1
+		maxima <- maxima + 1 # add 1 to ensure maxima is within plot limits
 	} else {
 		maxima <- ceiling(maxima)
 	}
+
+    # Uppercase first letter in string
+    simpleCap <- function(x) {
+        s <- strsplit(x, ' ')[[1]]
+        paste(toupper(substring(s,1,1)),substring(s,2),sep='',collapse=' ')
+    }
+
+    ### Create plot
 
 	# Create temp df
 	data <- data.frame(id=rownames(states@data),
@@ -109,21 +112,34 @@ plot_vws <- function(states, vws, commodity, year, identifier, label, mmdata, nc
 	map.df <- join(states.fort, data, by='id')
 	map.df$plot_fill <- map.df[,identifier]
 	map.df$plot_fill[map.df$plot_fill<=0] <- NA #convert zeros to NA
-	#write.csv(map.df,sprintf('state_plots/TEST_%s_aggregate_%s_data.csv',year,label),row.names=FALSE)
+
+    # Rename commodity name for plots
+    if (commodity == 'total') {
+        commodity = 'All Commodities'
+    } else {
+        commodity = simpleCap(tolower(str_replace_all(commodity,',',' - ')))
+    }
 
 	# Plot data
 	ggplot(map.df, aes(x=long,y=lat,group=group)) + 
 		geom_polygon(aes(fill=plot_fill)) + # sets what to display: VWS_m3_prod/yield, Storage_Bu, ...
 		coord_map(xlim=c(-125, -66),ylim=c(24, 50)) + 
-		scale_fill_distiller(palette='YlGnBu',
+		scale_fill_distiller(name='',
+                    palette='YlGnBu',
 				    limits=c( minima, maxima ),
 				    direction=1, 
 				    na.value='grey90') +
-		labs(title=sprintf('%s, %s, %s', str_replace_all(label,'_',' '), tolower(commodity), year),
-		    subtitle=sprintf('Min: %s, Max: %s', min(map.df$plot_fill,na.rm=TRUE), max(map.df$plot_fill,na.rm=TRUE) ),
-		    x='',
-		    y='') +
-		theme(panel.grid.major=element_blank(), 
+        # Define title label, etc
+		#labs(title=sprintf('%s\n%s, %s', str_replace_all(identifier,'_',' '), simpleCap(tolower(commodity)), year),
+		##labs(title=sprintf('%s\n%s, 1996-2005', str_replace_all(identifier,'_',' '), simpleCap(tolower(commodity))),
+		#    #subtitle=sprintf('Min: %s, Max: %s', formatC( min(map.df$plot_fill,na.rm=TRUE), format='e', digits=2 ), formatC( max(map.df$plot_fill,na.rm=TRUE), format='e', digits=2 ) ),
+		labs(x='', # x axis label
+		    y='') + # y axis label
+		theme(#plot.title=element_text(size=24),
+            #plot.subtitle=element_text(size=20),
+            legend.title=element_text(size=24),
+            legend.text=element_text(size=20),
+            panel.grid.major=element_blank(), 
 		    panel.grid.minor=element_blank(), 
 		    panel.background=element_blank(), 
 		    axis.line=element_blank(), 
@@ -142,19 +158,19 @@ plot_vws <- function(states, vws, commodity, year, identifier, label, mmdata, nc
 states_data <- readOGR('cb_2016_us_state_500k','cb_2016_us_state_500k')
 
 # Select only by certain commodity
-commodities <- c('BARLEY','BUCKWHEAT','CORN,GRAIN','CORN,SILAGE','MILLET,PROSO','OATS','RICE','RYE','SORGHUM,GRAIN','SORGHUM,SILAGE','TRITICALE','WHEAT','total')
+commodities <- c('BARLEY','CORN,GRAIN','CORN,SILAGE','OATS','PEAS,DRYEDIBLE','RYE','SORGHUM,GRAIN','SORGHUM,SILAGE','SOYBEANS','SUNFLOWER','WHEAT','SAFFLOWER','CANOLA','MUSTARD,SEED','FLAXSEED','LENTILS','PEAS,AUSTRIANWINTER','RAPESEED','total')
 
 # Select years to iterate over
 years <- c('2002','2007','2012')
 
 # List of identifiers and labels
-identifiers <- c('Storage_Bu','Irrigated_Harvest_Acre','Rainfed_Harvest_Acre','Irrigated_Percent_Harvest','Rainfed_Percent_Harvest','Yield_Bu_per_Acre','Production_Bu','CWU_bl_m3ha','CWU_gn_ir_m3ha','CWU_gn_rf_m3ha','CWU_bl_and_gn_ir_m3ha','VWS_ir_m3','VWS_rf_m3','VWS_m3','Precipitation_mm','Precipitation_Volume_km3','Capture_Efficiency')
-labels <- c('storage','irrigated_harvest','rainfed_harvest','irrigated_percent_harvest','rainfed_percent_harvest','yield','production','cwu_blue','cwu_green_irrigated','cwu_green_rainfed','cwu_blue_and_green_irrigated','vws_irrigated','vws_rainfed','vws','precip','precip_volume','capture_efficiency')
+identifiers <- c('Storage_Bu','Harvest_Ac','Percent_Harvest','Production_Bu','CWU_bl_m3yr','CWU_gn_m3yr','CWU_m3yr','VWS_ir_m3','VWS_rf_m3','VWS_m3','Precipitation_mm','Precipitation_Volume_km3','Capture_Efficiency')
+labels <- c('storage','harvest','percent_harvest','production','cwu_irrigated','cwu_rainfed','cwu','vws_irrigated','vws_rainfed','vws','precip','precip_volume','capture_efficiency')
 
 # Override to plot only what I want right now
-#identifiers <- c('VWS_ir_m3','VWS_rf_m3','VWS_m3')
-#labels <- c('vws_irrigated','vws_rainfed','vws')
-#commodities <- c('total')
+#identifiers <- c('Capture_Efficiency')
+#labels <- c('capture_efficiency')
+commodities <- c('total')
 
 df <- data.frame(identifiers, labels)
 print(df)
@@ -178,7 +194,7 @@ for (c in commodities) {
 			label <- toString(df$labels[[i]])
 			print(id)
 			# Read in VWS data
-			vws_data <- read.csv( sprintf('state_outputs/final_data_%s.csv', y) )
+			vws_data <- read.csv( sprintf('final_results/final_state_%s.csv', y) )
 			vws_data$State.ANSI <- sprintf('%02d',vws_data$State.ANSI)
 
 			# Plot data

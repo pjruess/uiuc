@@ -2,232 +2,355 @@ library(magick)
 
 ### COUNTY ###
 
-# Input variables
-hi1 <- image_read('county_plots/total/2002_total_irrigated_harvest.png')
-hi2 <- image_read('county_plots/total/2007_total_irrigated_harvest.png')
-hi3 <- image_read('county_plots/total/2012_total_irrigated_harvest.png')
-hi1 <- image_crop(hi1,'1800x1275')
-hi2 <- image_crop(hi2,'1800x1275')
-harv_ir <- image_append(c(hi1,hi2,hi3))
+# Harvest
+h1 <- image_read('county_plots/total/2002_total_harvest.png')
+h1 <- image_annotate(h1,'County, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+h2 <- image_read('county_plots/total/2007_total_harvest.png')
+h2 <- image_annotate(h2,'County, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+h3 <- image_read('county_plots/total/2012_total_harvest.png')
+h3 <- image_annotate(h3,'County, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+h1 <- image_crop(h1,'1550x1100')
+h2 <- image_crop(h2,'1550x1100')
+county_harv <- image_append(c(h1,h2,h3))
+county_harv <- image_crop(county_harv,'5650x1000')
 
-hr1 <- image_read('county_plots/total/2002_total_rainfed_harvest.png')
-hr2 <- image_read('county_plots/total/2007_total_rainfed_harvest.png')
-hr3 <- image_read('county_plots/total/2012_total_rainfed_harvest.png')
-hr1 <- image_crop(hr1,'1800x1275')
-hr2 <- image_crop(hr2,'1800x1275')
-harv_rf <- image_append(c(hr1,hr2,hr3))
+# Harvest
+h1 <- image_read('state_plots/total/2002_total_harvest.png')
+h1 <- image_annotate(h1,'Harvest, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+h2 <- image_read('state_plots/total/2007_total_harvest.png')
+h2 <- image_annotate(h2,'Harvest, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+h3 <- image_read('state_plots/total/2012_total_harvest.png')
+h3 <- image_annotate(h3,'Harvest, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+h1 <- image_crop(h1,'1550x1100')
+h2 <- image_crop(h2,'1550x1100')
+state_harv <- image_append(c(h1,h2,h3))
+state_harv <- image_crop(state_harv,'5650x1100')
 
+# Combined Harvest
+all_harv <- image_append(c(county_harv, state_harv),stack=TRUE)
+image_write(all_harv, path = "group_images_labeled/all_harv.png", format = "png")
+
+# Production
 p1 <- image_read('county_plots/total/2002_total_production.png')
+p1 <- image_annotate(p1,'County, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 p2 <- image_read('county_plots/total/2007_total_production.png')
+p2 <- image_annotate(p2,'County, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 p3 <- image_read('county_plots/total/2012_total_production.png')
-p1 <- image_crop(p1,'1800x1275')
-p2 <- image_crop(p2,'1800x1275')
-prod <- image_append(c(p1,p2,p3))
+p3 <- image_annotate(p3,'County, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+p1 <- image_crop(p1,'1550x1100')
+p2 <- image_crop(p2,'1550x1100')
+county_prod <- image_append(c(p1,p2,p3))
+county_prod <- image_crop(county_prod,'5650x1100')
 
-y1 <- image_read('county_plots/total/2002_total_yield.png')
-y2 <- image_read('county_plots/total/2007_total_yield.png')
-y3 <- image_read('county_plots/total/2012_total_yield.png')
-y1 <- image_crop(y1,'1800x1275')
-y2 <- image_crop(y2,'1800x1275')
-yield <- image_append(c(y1,y2,y3))
+# Production
+p1 <- image_read('state_plots/total/2002_total_production.png')
+p1 <- image_annotate(p1,'Production, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+p2 <- image_read('state_plots/total/2007_total_production.png')
+p2 <- image_annotate(p2,'Production, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+p3 <- image_read('state_plots/total/2012_total_production.png')
+p3 <- image_annotate(p3,'Production, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+p1 <- image_crop(p1,'1550x1100')
+p2 <- image_crop(p2,'1550x1100')
+state_prod <- image_append(c(p1,p2,p3))
+state_prod <- image_crop(state_prod,'5650x1100')
 
+# Combined Production
+all_prod <- image_append(c(county_prod, state_prod),stack=TRUE)
+image_write(all_prod, path = "group_images_labeled/all_prod.png", format = "png")
+
+# Storage
 s1 <- image_read('county_plots/total/2002_total_storage.png')
+s1 <- image_annotate(s1,'On-Farm, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 s2 <- image_read('county_plots/total/2007_total_storage.png')
+s2 <- image_annotate(s2,'On-Farm, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 s3 <- image_read('county_plots/total/2012_total_storage.png')
-s1 <- image_crop(s1,'1800x1275')
-s2 <- image_crop(s2,'1800x1275')
-stor <- image_append(c(s1,s2,s3))
+s3 <- image_annotate(s3,'On-Farm, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+s1 <- image_crop(s1,'1550x1100')
+s2 <- image_crop(s2,'1550x1100')
+county_stor <- image_append(c(s1,s2,s3))
+county_stor <- image_crop(county_stor,'5650x1100')
 
-county_inputs <- image_append(c(harv_ir, harv_rf, prod, yield, stor),stack=TRUE)
+# Storage
+s1 <- image_read('state_plots/total/2002_total_storage.png')
+s1 <- image_annotate(s1,'Off-Farm, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+s2 <- image_read('state_plots/total/2007_total_storage.png')
+s2 <- image_annotate(s2,'Off-Farm, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+s3 <- image_read('state_plots/total/2012_total_storage.png')
+s3 <- image_annotate(s3,'Off-Farm, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+s1 <- image_crop(s1,'1550x1100')
+s2 <- image_crop(s2,'1550x1100')
+state_stor <- image_append(c(s1,s2,s3))
+state_stor <- image_crop(state_stor,'5650x1100')
 
-image_write(county_inputs, path = "group_images/county_inputs_combined.png", format = "png")
+# Storage
+s1 <- image_read('vws_plots/total/2002_total_storage.png')
+s1 <- image_annotate(s1,'Storage, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+s2 <- image_read('vws_plots/total/2007_total_storage.png')
+s2 <- image_annotate(s2,'Storage, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+s3 <- image_read('vws_plots/total/2012_total_storage.png')
+s3 <- image_annotate(s3,'Storage, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+s1 <- image_crop(s1,'1550x1100')
+s2 <- image_crop(s2,'1550x1100')
+total_stor <- image_append(c(s1,s2,s3))
+total_stor <- image_crop(total_stor,'5650x1100')
 
-# VWS results
+# Combined storage
+all_stor <- image_append(c(county_stor, state_stor, total_stor),stack=TRUE)
+image_write(all_stor, path = "group_images_labeled/all_storage.png", format = "png")
+image_write(total_stor, path = "group_images_labeled/total_combined_storage.png", format = "png")
+
+image_write(image_append(c(state_prod,total_stor),stack=TRUE), path = "group_images_labeled/prod_stor_inputs.png", format = "png")
+
+# CWU
+cwu1 <- image_read('county_plots/total/2012_total_cwu_irrigated.png')
+cwu1 <- image_annotate(cwu1,'Irrigated, County',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+cwu2 <- image_read('county_plots/total/2012_total_cwu_rainfed.png')
+cwu2 <- image_annotate(cwu2,'Rainfed, County',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+cwu3 <- image_read('county_plots/total/2012_total_cwu.png')
+cwu3 <- image_annotate(cwu3,'Total, County',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+cwu1 <- image_crop(cwu1,'1550x1100')
+cwu2 <- image_crop(cwu2,'1550x1100')
+county_cwu <- image_append(c(cwu1,cwu2,cwu3))
+county_cwu <- image_crop(county_cwu,'5650x1100')
+
+# CWU
+cwu1 <- image_read('state_plots/total/2012_total_cwu_irrigated.png')
+cwu1 <- image_annotate(cwu1,'Irrigated, State',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+cwu2 <- image_read('state_plots/total/2012_total_cwu_rainfed.png')
+cwu2 <- image_annotate(cwu2,'Rainfed, State',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+cwu3 <- image_read('state_plots/total/2012_total_cwu.png')
+cwu3 <- image_annotate(cwu3,'Total, State',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+cwu1 <- image_crop(cwu1,'1550x1100')
+cwu2 <- image_crop(cwu2,'1550x1100')
+state_cwu <- image_append(c(cwu1,cwu2,cwu3))
+state_cwu <- image_crop(state_cwu,'5650x1100')
+
+# Combined CWU
+all_cwu <- image_append(c(county_cwu, state_cwu),stack=TRUE)
+image_write(all_cwu, path = "group_images_labeled/all_cwu.png", format = "png")
+
+# County VWS results
 vb1 <- image_read('county_plots/total/2002_total_vws_irrigated.png')
+vb1 <- image_annotate(vb1,'Irrigated, County, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 vb2 <- image_read('county_plots/total/2007_total_vws_irrigated.png')
+vb2 <- image_annotate(vb2,'Irrigated, County, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 vb3 <- image_read('county_plots/total/2012_total_vws_irrigated.png')
-vb1 <- image_crop(vb1,'1800x1275')
-vb2 <- image_crop(vb2,'1800x1275')
+vb3 <- image_annotate(vb3,'Irrigated, County, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vb1 <- image_crop(vb1,'1550x1100')
+vb2 <- image_crop(vb2,'1550x1100')
 vws_blue <- image_append(c(vb1,vb2,vb3))
+vws_blue <- image_crop(vws_blue,'5650x1100')
 
 vg1 <- image_read('county_plots/total/2002_total_vws_rainfed.png')
+vg1 <- image_annotate(vg1,'Rainfed, County, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 vg2 <- image_read('county_plots/total/2007_total_vws_rainfed.png')
+vg2 <- image_annotate(vg2,'Rainfed, County, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 vg3 <- image_read('county_plots/total/2012_total_vws_rainfed.png')
-vg1 <- image_crop(vg1,'1800x1275')
-vg2 <- image_crop(vg2,'1800x1275')
+vg3 <- image_annotate(vg3,'Rainfed, County, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vg1 <- image_crop(vg1,'1550x1100')
+vg2 <- image_crop(vg2,'1550x1100')
 vws_green <- image_append(c(vg1,vg2,vg3))
+vws_green <- image_crop(vws_green,'5650x1100')
 
 v1 <- image_read('county_plots/total/2002_total_vws.png')
+v1 <- image_annotate(v1,'Total, County, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 v2 <- image_read('county_plots/total/2007_total_vws.png')
+v2 <- image_annotate(v2,'Total, County, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 v3 <- image_read('county_plots/total/2012_total_vws.png')
-v1 <- image_crop(v1,'1800x1275')
-v2 <- image_crop(v2,'1800x1275')
+v3 <- image_annotate(v3,'Total, County, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+v1 <- image_crop(v1,'1550x1100')
+v2 <- image_crop(v2,'1550x1100')
 vws_total <- image_append(c(v1,v2,v3))
+vws_total <- image_crop(vws_total,'5650x1100')
 
 vws <- image_append(c(vws_blue, vws_green, vws_total),stack=TRUE)
 
-image_write(vws, path = "group_images/county_vws_combined.png", format = "png")
+image_write(vws, path = "group_images_labeled/county_vws_combined.png", format = "png")
 
-# Capture Efficiency
-ce1 <- image_read('county_plots/total/2002_total_capture_efficiency.png')
-ce2 <- image_read('county_plots/total/2007_total_capture_efficiency.png')
-ce3 <- image_read('county_plots/total/2012_total_capture_efficiency.png')
-ce1 <- image_crop(ce1,'1800x1275')
-ce2 <- image_crop(ce2,'1800x1275')
-ce <- image_append(c(ce1,ce2,ce3))
-
-image_write(ce, path = "group_images/county_ce_combined.png", format = "png")
-
-# CWU
-cwu1 <- image_read('county_plots/total/2012_total_cwu_blue.png')
-cwu2 <- image_read('county_plots/total/2012_total_cwu_green_irrigated.png')
-cwu3 <- image_read('county_plots/total/2012_total_cwu_green_rainfed.png')
-cwu1 <- image_crop(cwu1,'1800x1275')
-cwu2 <- image_crop(cwu2,'1800x1275')
-county_cwu <- image_append(c(cwu1,cwu2,cwu3))
-
-image_write(county_cwu, path = "group_images/county_cwu_combined.png", format = "png")
-
-# Water Footprint of Grains
-# Fill in data here... 
-
-### STATE ###
-
-# Input variables
-hi1 <- image_read('state_plots/total/2002_total_irrigated_harvest.png')
-hi2 <- image_read('state_plots/total/2007_total_irrigated_harvest.png')
-hi3 <- image_read('state_plots/total/2012_total_irrigated_harvest.png')
-hi1 <- image_crop(hi1,'1800x1275')
-hi2 <- image_crop(hi2,'1800x1275')
-harv_ir <- image_append(c(hi1,hi2,hi3))
-
-hr1 <- image_read('state_plots/total/2002_total_rainfed_harvest.png')
-hr2 <- image_read('state_plots/total/2007_total_rainfed_harvest.png')
-hr3 <- image_read('state_plots/total/2012_total_rainfed_harvest.png')
-hr1 <- image_crop(hr1,'1800x1275')
-hr2 <- image_crop(hr2,'1800x1275')
-harv_rf <- image_append(c(hr1,hr2,hr3))
-
-p1 <- image_read('state_plots/total/2002_total_production.png')
-p2 <- image_read('state_plots/total/2007_total_production.png')
-p3 <- image_read('state_plots/total/2012_total_production.png')
-p1 <- image_crop(p1,'1800x1275')
-p2 <- image_crop(p2,'1800x1275')
-prod <- image_append(c(p1,p2,p3))
-
-y1 <- image_read('state_plots/total/2002_total_yield.png')
-y2 <- image_read('state_plots/total/2007_total_yield.png')
-y3 <- image_read('state_plots/total/2012_total_yield.png')
-y1 <- image_crop(y1,'1800x1275')
-y2 <- image_crop(y2,'1800x1275')
-yield <- image_append(c(y1,y2,y3))
-
-s1 <- image_read('state_plots/total/2002_total_storage.png')
-s2 <- image_read('state_plots/total/2007_total_storage.png')
-s3 <- image_read('state_plots/total/2012_total_storage.png')
-s1 <- image_crop(s1,'1800x1275')
-s2 <- image_crop(s2,'1800x1275')
-stor <- image_append(c(s1,s2,s3))
-
-state_inputs <- image_append(c(harv_ir, harv_rf, prod, yield, stor),stack=TRUE)
-
-image_write(state_inputs, path = "group_images/state_inputs_combined.png", format = "png")
-
-# VWS results
+# State VWS results
 vb1 <- image_read('state_plots/total/2002_total_vws_irrigated.png')
+vb1 <- image_annotate(vb1,'Irrigated, State, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 vb2 <- image_read('state_plots/total/2007_total_vws_irrigated.png')
+vb2 <- image_annotate(vb2,'Irrigated, State, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 vb3 <- image_read('state_plots/total/2012_total_vws_irrigated.png')
-vb1 <- image_crop(vb1,'1800x1275')
-vb2 <- image_crop(vb2,'1800x1275')
+vb3 <- image_annotate(vb3,'Irrigated, State, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vb1 <- image_crop(vb1,'1550x1100')
+vb2 <- image_crop(vb2,'1550x1100')
 vws_blue <- image_append(c(vb1,vb2,vb3))
+vws_blue <- image_crop(vws_blue,'5650x1100')
 
 vg1 <- image_read('state_plots/total/2002_total_vws_rainfed.png')
+vg1 <- image_annotate(vg1,'Rainfed, State, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 vg2 <- image_read('state_plots/total/2007_total_vws_rainfed.png')
+vg2 <- image_annotate(vg2,'Rainfed, State, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 vg3 <- image_read('state_plots/total/2012_total_vws_rainfed.png')
-vg1 <- image_crop(vg1,'1800x1275')
-vg2 <- image_crop(vg2,'1800x1275')
+vg3 <- image_annotate(vg3,'Rainfed, State, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vg1 <- image_crop(vg1,'1550x1100')
+vg2 <- image_crop(vg2,'1550x1100')
 vws_green <- image_append(c(vg1,vg2,vg3))
+vws_green <- image_crop(vws_green,'5650x1100')
 
 v1 <- image_read('state_plots/total/2002_total_vws.png')
+v1 <- image_annotate(v1,'Total, State, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 v2 <- image_read('state_plots/total/2007_total_vws.png')
+v2 <- image_annotate(v2,'Total, State, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 v3 <- image_read('state_plots/total/2012_total_vws.png')
-v1 <- image_crop(v1,'1800x1275')
-v2 <- image_crop(v2,'1800x1275')
+v3 <- image_annotate(v3,'Total, State, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+v1 <- image_crop(v1,'1550x1100')
+v2 <- image_crop(v2,'1550x1100')
 vws_total <- image_append(c(v1,v2,v3))
+vws_total <- image_crop(vws_total,'5650x1100')
 
 vws <- image_append(c(vws_blue, vws_green, vws_total),stack=TRUE)
 
-image_write(vws, path = "group_images/state_vws_ce_combined.png", format = "png")
+image_write(vws, path = "group_images_labeled/state_vws_combined.png", format = "png")
 
-# Capture Efficiency
-ce1 <- image_read('state_plots/total/2002_total_capture_efficiency.png')
-ce2 <- image_read('state_plots/total/2007_total_capture_efficiency.png')
-ce3 <- image_read('state_plots/total/2012_total_capture_efficiency.png')
-ce1 <- image_crop(ce1,'1800x1275')
-ce2 <- image_crop(ce2,'1800x1275')
-ce <- image_append(c(ce1,ce2,ce3))
-
-image_write(ce, path = "group_images/state_ce_combined.png", format = "png")
-
-# CWU
-cwu1 <- image_read('state_plots/total/2012_total_cwu_blue.png')
-cwu2 <- image_read('state_plots/total/2012_total_cwu_green_irrigated.png')
-cwu3 <- image_read('state_plots/total/2012_total_cwu_green_rainfed.png')
-cwu1 <- image_crop(cwu1,'1800x1275')
-cwu2 <- image_crop(cwu2,'1800x1275')
-state_cwu <- image_append(c(cwu1,cwu2,cwu3))
-
-image_write(state_cwu, path = "group_images/state_cwu_combined.png", format = "png")
-
-# Water Footprint of Grains
-# Fill in data here... 
-
-### STATE + COUNTY ###
-
-# Input variables
-s1 <- image_read('vws_plots/total/2002_total_storage.png')
-s2 <- image_read('vws_plots/total/2007_total_storage.png')
-s3 <- image_read('vws_plots/total/2012_total_storage.png')
-s1 <- image_crop(s1,'1800x1275')
-s2 <- image_crop(s2,'1800x1275')
-stor <- image_append(c(s1,s2,s3))
-
-#county_inputs <- image_append(c(harv_ir, harv_rf, prod, yield, stor),stack=TRUE)
-
-image_write(stor, path = "group_images/total_inputs_combined.png", format = "png")
-
-# VWS results
+# State + County VWS results
 vb1 <- image_read('vws_plots/total/2002_total_vws_irrigated.png')
+vb1 <- image_annotate(vb1,'Irrigated, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 vb2 <- image_read('vws_plots/total/2007_total_vws_irrigated.png')
+vb2 <- image_annotate(vb2,'Irrigated, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 vb3 <- image_read('vws_plots/total/2012_total_vws_irrigated.png')
-vb1 <- image_crop(vb1,'1800x1275')
-vb2 <- image_crop(vb2,'1800x1275')
+vb3 <- image_annotate(vb3,'Irrigated, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vb1 <- image_crop(vb1,'1550x1100')
+vb2 <- image_crop(vb2,'1550x1100')
 vws_blue <- image_append(c(vb1,vb2,vb3))
+vws_blue <- image_crop(vws_blue,'5650x1100')
 
 vg1 <- image_read('vws_plots/total/2002_total_vws_rainfed.png')
+vg1 <- image_annotate(vg1,'Rainfed, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 vg2 <- image_read('vws_plots/total/2007_total_vws_rainfed.png')
+vg2 <- image_annotate(vg2,'Rainfed, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 vg3 <- image_read('vws_plots/total/2012_total_vws_rainfed.png')
-vg1 <- image_crop(vg1,'1800x1275')
-vg2 <- image_crop(vg2,'1800x1275')
+vg3 <- image_annotate(vg3,'Rainfed, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vg1 <- image_crop(vg1,'1550x1100')
+vg2 <- image_crop(vg2,'1550x1100')
 vws_green <- image_append(c(vg1,vg2,vg3))
+vws_green <- image_crop(vws_green,'5650x1100')
 
 v1 <- image_read('vws_plots/total/2002_total_vws.png')
+v1 <- image_annotate(v1,'Total, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 v2 <- image_read('vws_plots/total/2007_total_vws.png')
+v2 <- image_annotate(v2,'Total, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
 v3 <- image_read('vws_plots/total/2012_total_vws.png')
-v1 <- image_crop(v1,'1800x1275')
-v2 <- image_crop(v2,'1800x1275')
+v3 <- image_annotate(v3,'Total, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+v1 <- image_crop(v1,'1550x1100')
+v2 <- image_crop(v2,'1550x1100')
 vws_total <- image_append(c(v1,v2,v3))
+vws_total <- image_crop(vws_total,'5650x1100')
 
 vws <- image_append(c(vws_blue, vws_green, vws_total),stack=TRUE)
 
-image_write(vws, path = "group_images/total_vws_combined.png", format = "png")
+image_write(vws, path = "group_images_labeled/total_vws_combined.png", format = "png")
 
-# Capture Efficiency
-ce1 <- image_read('vws_plots/total/2002_total_capture_efficiency.png')
-ce2 <- image_read('vws_plots/total/2007_total_capture_efficiency.png')
-ce3 <- image_read('vws_plots/total/2012_total_capture_efficiency.png')
-ce1 <- image_crop(ce1,'1800x1275')
-ce2 <- image_crop(ce2,'1800x1275')
-ce <- image_append(c(ce1,ce2,ce3))
+# Fractional VWS Contributions
+fc_ir1 <- image_read('vws_plots/total/2002_total_vws_ir_fraction.png')
+fc_ir1 <- image_annotate(fc_ir1,'Irrigated, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+fc_ir2 <- image_read('vws_plots/total/2007_total_vws_ir_fraction.png')
+fc_ir2 <- image_annotate(fc_ir2,'Irrigated, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+fc_ir3 <- image_read('vws_plots/total/2012_total_vws_ir_fraction.png')
+fc_ir3 <- image_annotate(fc_ir3,'Irrigated, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+fc_ir1 <- image_crop(fc_ir1,'1550x1100')
+fc_ir2 <- image_crop(fc_ir2,'1550x1100')
+fc_ir <- image_append(c(fc_ir1, fc_ir2, fc_ir3))
+fc_ir <- image_crop(fc_ir,'5650x1100')
 
-image_write(ce, path = "group_images/total_ce_combined.png", format = "png")
+fc_rf1 <- image_read('vws_plots/total/2002_total_vws_rf_fraction.png')
+fc_rf1 <- image_annotate(fc_rf1,'Rainfed, 2002',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+fc_rf2 <- image_read('vws_plots/total/2007_total_vws_rf_fraction.png')
+fc_rf2 <- image_annotate(fc_rf2,'Rainfed, 2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+fc_rf3 <- image_read('vws_plots/total/2012_total_vws_rf_fraction.png')
+fc_rf3 <- image_annotate(fc_rf3,'Rainfed, 2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+fc_rf1 <- image_crop(fc_rf1,'1550x1100')
+fc_rf2 <- image_crop(fc_rf2,'1550x1100')
+fc_rf <- image_append(c(fc_rf1, fc_rf2, fc_rf3))
+fc_rf <- image_crop(fc_rf,'5650x1100')
+
+fc <- image_append(c(fc_ir,fc_rf),stack=TRUE)
+
+image_write(fc, path = "group_images_labeled/total_fc_combined.png", format = "png")
+image_write(image_append(c(image_crop(fc_ir3,'1550x1100'),fc_rf3)), path = "group_images_labeled/2012_fc_combined.png", format = "png")
+image_write(image_append(c(fc_ir3,fc_rf3),stack=TRUE), path = "group_images_labeled/2012_fc_combined_stacked.png", format = "png")
+
+# Change over Time
+
+# Harvest
+hd1 <- image_read('vws_plots/total/harv_diff_2007_vs_2002.png')
+hd1 <- image_annotate(hd1,'Harvest, 2002-2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+hd2 <- image_read('vws_plots/total/harv_diff_2012_vs_2007.png')
+hd2 <- image_annotate(hd2,'Harvest, 2007-2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+hd3 <- image_read('vws_plots/total/harv_diff_2012_vs_2002.png')
+hd3 <- image_annotate(hd3,'Harvest, 2002-2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+hd1 <- image_crop(hd1,'1550x1100')
+hd2 <- image_crop(hd2,'1550x1100')
+hd <- image_append(c(hd1,hd2,hd3))
+hd <- image_crop(hd,'5650x1100')
+
+# Production
+pd1 <- image_read('vws_plots/total/prod_diff_2007_vs_2002.png')
+pd1 <- image_annotate(pd1,'Production, 2002-2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+pd2 <- image_read('vws_plots/total/prod_diff_2012_vs_2007.png')
+pd2 <- image_annotate(pd2,'Production, 2007-2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+pd3 <- image_read('vws_plots/total/prod_diff_2012_vs_2002.png')
+pd3 <- image_annotate(pd3,'Production, 2002-2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+pd1 <- image_crop(pd1,'1550x1100')
+pd2 <- image_crop(pd2,'1550x1100')
+pd <- image_append(c(pd1,pd2,pd3))
+pd <- image_crop(pd,'5650x1100')
+
+# Storage
+sd1 <- image_read('vws_plots/total/storage_diff_2007_vs_2002.png')
+sd1 <- image_annotate(sd1,'Storage, 2002-2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+sd2 <- image_read('vws_plots/total/storage_diff_2012_vs_2007.png')
+sd2 <- image_annotate(sd2,'Storage, 2007-2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+sd3 <- image_read('vws_plots/total/storage_diff_2012_vs_2002.png')
+sd3 <- image_annotate(sd3,'Storage, 2002-2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+sd1 <- image_crop(sd1,'1550x1100')
+sd2 <- image_crop(sd2,'1550x1100')
+sd <- image_append(c(sd1,sd2,sd3))
+sd <- image_crop(sd,'5650x1100')
+
+# Combined Input Differences
+input_diffs <- image_append(c(hd, pd, sd),stack=TRUE)
+image_write(input_diffs, path = "group_images_labeled/input_diffs.png", format = "png")
+image_write(image_append(c(pd,sd),stack=TRUE), path = "group_images_labeled/prod_stor_diffs.png", format = "png")
+
+# VWS Irrigated
+vi1 <- image_read('vws_plots/total/vws_ir_diff_2007_vs_2002.png')
+vi1 <- image_annotate(vi1,'Irrigated, 2002-2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vi2 <- image_read('vws_plots/total/vws_ir_diff_2012_vs_2007.png')
+vi2 <- image_annotate(vi2,'Irrigated, 2007-2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vi3 <- image_read('vws_plots/total/vws_ir_diff_2012_vs_2002.png')
+vi3 <- image_annotate(vi3,'Irrigated, 2002-2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vi1 <- image_crop(vi1,'1550x1100')
+vi2 <- image_crop(vi2,'1550x1100')
+vi <- image_append(c(vi1,vi2,vi3))
+vi <- image_crop(vi,'5650x1100')
+
+# VWS Rainfed
+vr1 <- image_read('vws_plots/total/vws_rf_diff_2007_vs_2002.png')
+vr1 <- image_annotate(vr1,'Rainfed, 2002-2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vr2 <- image_read('vws_plots/total/vws_rf_diff_2012_vs_2007.png')
+vr2 <- image_annotate(vr2,'Rainfed, 2007-2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vr3 <- image_read('vws_plots/total/vws_rf_diff_2012_vs_2002.png')
+vr3 <- image_annotate(vr3,'Rainfed, 2002-2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vr1 <- image_crop(vr1,'1550x1100')
+vr2 <- image_crop(vr2,'1550x1100')
+vr <- image_append(c(vr1,vr2,vr3))
+vr <- image_crop(vr,'5650x1100')
+
+# VWS
+vd1 <- image_read('vws_plots/total/vws_diff_2007_vs_2002.png')
+vd1 <- image_annotate(vd1,'Total, 2002-2007',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vd2 <- image_read('vws_plots/total/vws_diff_2012_vs_2007.png')
+vd2 <- image_annotate(vd2,'Total, 2007-2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vd3 <- image_read('vws_plots/total/vws_diff_2012_vs_2002.png')
+vd3 <- image_annotate(vd3,'Total, 2002-2012',size=100,location='+50+50',,gravity='northwest',color='black')#,location='+50+15')
+vd1 <- image_crop(vd1,'1550x1100')
+vd2 <- image_crop(vd2,'1550x1100')
+vd <- image_append(c(vd1,vd2,vd3))
+vd <- image_crop(vd,'5650x1100')
+
+diffs <- image_append(c(vi, vr, vd),stack=TRUE)
+
+image_write(diffs, path = "group_images_labeled/vws_diffs_combined.png", format = "png")

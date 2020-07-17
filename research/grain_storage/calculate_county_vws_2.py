@@ -117,23 +117,12 @@ class alldata:
         # Read in commodities list
         self.commodities = sorted( self.harvest_data['Commodity'].unique() ) 
 
-        # Stretch data out
-        self.harvest_data = self.stretch(self.harvest_data,'Harvest_Acre','stretched_harvest_data_{0}.csv'.format(self.year))
-        self.irrigated_harvest_data = self.stretch(self.irrigated_harvest_data,'Harvest_Acre','stretched_irrigated_harvest_data_{0}.csv'.format(self.year))
-        self.production_data = self.stretch(self.production_data,'Production_Bu','stretched_production_data_{0}.csv'.format(self.year))
-
-        # Create new copy of irrigation dataset for merging later
-        # irrigated_harvest_copy = self.irrigated_harvest_data.copy()
-
         # Fill data: add place-holders for all geoid-commodity pairs not currently represented
         self.harvest_data = self.fill_data(self.harvest_data,'harvest','filled_harvest_data_{0}.csv'.format(self.year))
         self.irrigated_harvest_data = self.fill_data(self.irrigated_harvest_data,'irrigated_harvest','filled_irrigated_harvest_data_{0}.csv'.format(self.year))
         self.production_data = self.fill_data(self.production_data,'production','filled_production_data_{0}.csv'.format(self.year))
 
         # Calculate non-irrigated harvest area
-        # rainfed_harvest = self.irrigated_harvest_data
-        # rainfed_harvest['Commodity'] = rainfed_harvest['Commodity'].str.replace(', IRRIGATED', '')
-        # rainfed_harvest = self.stretch(rainfed_harvest,'Harvest_Acre','stretched_rainfed_harvest_data_{0}.csv'.format(self.year))
         rainfed_harvest = self.harvest_data.merge(self.irrigated_harvest_data[['GEOID','Commodity','Irrigated_Harvest_Acre']],on=['GEOID','Commodity'])
         rainfed_harvest = rainfed_harvest.loc[:, ~rainfed_harvest.columns.duplicated()]
         rainfed_harvest['Rainfed_Harvest_Acre'] = rainfed_harvest['Harvest_Acre'] - rainfed_harvest['Irrigated_Harvest_Acre']
@@ -211,39 +200,6 @@ class alldata:
             )
         dataset['GEOID'] = dataset['State ANSI'] + dataset['County ANSI']
 
-    # Dis-aggregate data from 'other counties' to all existing counties
-    def stretch(self,dataset,value,path):
-        path = 'county_outputs/{0}'.format(path)
-        if os.path.isfile(path):
-            print 'Loading stretched_data file found at {0}'.format(path)
-            df = pandas.read_csv(path,usecols=dataset.columns)
-            df['GEOID'] = df['GEOID'].apply(lambda x: '{0:05g}'.format(x))
-            return df
-        else:
-            print 'Creating new stretched_data file at {0}'.format(path)
-            others = dataset[dataset['County ANSI'] == 'nan']
-            nonothers = dataset[dataset['County ANSI'] != 'nan']
-            newrows = []
-            for i,r in others.iterrows():
-                d = nonothers[(nonothers['State'] == r['State']) & (nonothers['Ag District'] == r['Ag District']) & (nonothers['Commodity'] == r['Commodity'])] # dataframe of nonothers matching state-agdist-commodity of current 'others' row
-                a = self.county_codes[(self.county_codes['State ANSI'] == r['State ANSI']) & (self.county_codes['District ANSI'] == r['Ag District Code'])]# dataframe of all counties matching state-agdist-commodity of current 'others' row
-                nodata_geoids = set(a['GEOID'].unique()) - set(d['GEOID'].unique())
-                
-                # For each geoid not represented, copy 'others' data and add row with updated geoid (and county, etc.)
-                for g in nodata_geoids:
-                    temprow = others.loc[i,]
-                    c = self.county_codes[(self.county_codes['GEOID'] == g) & (self.county_codes['District ANSI'] == r['Ag District Code'])]
-                    temprow.at['County'] = c['Name'].values[0].upper()
-                    temprow.at['GEOID'] = '{0:05g}'.format(int(g))
-                    temprow.at['County ANSI'] = c['County ANSI'].values[0]
-                    newrows.append(temprow)
-        
-            # Create new dataframe 
-            dfnew = nonothers.append(pandas.DataFrame(newrows,columns=nonothers.columns)) 
-            dfnew = dfnew.sort_values(['GEOID','Commodity'],ascending=[True,True])
-            dfnew.to_csv(path,index=False)
-            return dfnew
-
     # Convert harvest values to county-wide fractional harvest
     # Note: This function removes any rows with '(D)' values. These are added in later as empty rows (because no data is available anyway)
     def fraction(self,dataset):
@@ -306,37 +262,43 @@ class alldata:
 
             # Create list of (geoid,wfn_code,commodity) pairs to iterate over
             geoids = sorted(self.county_codes['GEOID'].unique())
-            commodities = set([i.split(',')[0] for i in self.production_data['Commodity'].unique()])
+            #commodities = set([i.split(',')[0] for i in self.production_data['Commodity'].unique()])
+            commodities = self.production_data['Commodity'].unique()
             indices = itertools.product(geoids,commodities)
     
             # Select type of water to use for Crop Water Content (CWU) of self.commodities in each county
             watertypes = ['bl','gn_ir','gn_rf'] # bl = blue; ir = irrigated green; rf = rainfed green
     
+            # Read in CWU data
+            def clean_cwu(cwu_path):
+                tempdf = pandas.read_csv(cwu_path)
+                tempdf['GEOID'] = tempdf['GEOID'].apply(lambda x: '{0:05g}'.format(x))
+                tempdf.rename(columns=lambda x: x.strip(),inplace=True)#tempdf.columns.str.replace(' ','')
+                return tempdf
+
+            cwu_bl = clean_cwu('cwu_data/marston_cwu_bl.csv')
+            cwu_gn_ir = clean_cwu('cwu_data/marston_cwu_gn_ir.csv')
+            cwu_gn_rf = clean_cwu('cwu_data/marston_cwu_gn_rf.csv')
+
+            cwu_dfs = [cwu_bl, cwu_gn_ir, cwu_gn_rf]
+            
             # Add CWU data to dataframe
             # Iterate over (GEOID, WFN Code) pairs to retrieve CWU values from CWU csv files
             newrows = []
             for g,c in indices:
-                w = self.usda_to_wfn[self.usda_to_wfn['usda'] == c]['wfn_code'].values[0]
-
                 # Iterate over water types
                 cwu_list = [] # list of bl, gn_ir, and gn_rf
-                for wtype in watertypes:
-                    f = 'cwu{0}_{1}'.format(w,wtype) # create correct file name
-                    data_path = 'cwu_zonal_stats/county_outputs/' + f + '.csv'
-                    # Read in temporary dataframe for particular filename (based on WFN code)
-                    dfnew = pandas.read_csv(data_path,converters={'GEOID': lambda x: str(x)}) # Retains leading zeros in
-                    tempdf = dfnew
-
+                for tempdf in cwu_dfs:
                     # Retrieve CWU average for county in question, and add to new column in dataframe
-                    if ((len(tempdf[tempdf['GEOID']==g]) == 0) or not (tempdf[tempdf['GEOID']==g]['mean'].values[0])): 
+                    if ((len(tempdf[tempdf['GEOID']==g]) == 0) or not (tempdf[tempdf['GEOID']==g][c].values[0])): 
                         cwu_list.append( 'NaN' ) 
                         aland = 'NaN'
                     else: 
-                        cwu_list.append( tempdf[tempdf['GEOID'] == g]['mean'].values[0] ) # Mean CWU, county & commodity
+                        cwu_list.append( tempdf[tempdf['GEOID'] == g][c].values[0] ) # Mean CWU, county & commodity
                         aland = tempdf[tempdf['GEOID'] == g]['ALAND'].values[0] # ALAND in sq meters
                 temprow = [g, c, cwu_list[0], cwu_list[1], cwu_list[2], aland]
                 newrows.append(temprow)
-                print 'Completed {0}'.format(f.split('_')[0])
+                print g 
 
             # Create dataframe from newrows data
             cols = ['GEOID','Commodity','CWU_bl_m3ha','CWU_gn_ir_m3ha','CWU_gn_rf_m3ha','ALAND_sqmeters']
@@ -373,7 +335,7 @@ class alldata:
             harvest_production_data = harvest_data.merge(production_data,on=['GEOID','Commodity_Merger'])
 
             # Merge harvest_production_data with cwu_data
-            harvest_production_data['Commodity_Merger'] = harvest_production_data['Commodity_Merger'].str.split(',').str[0]
+            harvest_production_data['Commodity_Merger'] = harvest_production_data['Commodity_Merger']#.str.split(',').str[0]
             self.cwu_data['Commodity_Merger'] = self.cwu_data['Commodity']
             summarydf = harvest_production_data.merge(self.cwu_data,on=['GEOID','Commodity_Merger'])
             
@@ -425,7 +387,7 @@ class alldata:
             df['Storage_Bu'] = pandas.to_numeric(df['Storage_Bu'],errors='coerce')
 
             # Calculate yield
-            df['Yield_Bu_per_Acre'] = df['Production_Bu'] / ( df['Irrigated_Harvest_Acre'] + df['Rainfed_Harvest_Acre'] ) 
+            df['Yield_Bu_per_Acre'] = df['Production_Bu'] / ( df['Irrigated_Harvest_Acre'] + df['Rainfed_Harvest_Acre'] ) * 1. 
             df[df['Yield_Bu_per_Acre'] == float('+inf')] = scipy.nan # replace infinity (when have production but no harvest data) with zero
 
             df['CWU_bl_and_gn_ir_m3ha'] = df['CWU_bl_m3ha'] + df['CWU_gn_ir_m3ha']
@@ -507,13 +469,13 @@ class alldata:
         print '{0} Irrigated Harvested Area (Acres):{1:1.2e} ({2:1.2e})'.format(self.year,long(df['Irrigated_Harvest_Acre'].mean()),long(df['Irrigated_Harvest_Acre'].std()))
         print '{0} Rainfed Harvested Area (Acres):{1:1.2e} ({2:1.2e})'.format(self.year,long(df['Rainfed_Harvest_Acre'].mean()),long(df['Rainfed_Harvest_Acre'].std()))
         print '{0} Production (Bu):{1:1.2e} ({2:1.2e})'.format(self.year,long(df['Production_Bu'].mean()),long(df['Production_Bu'].std()))
-        print '{0} Yield (Bu/Acre):{1:1.2e} ({2:1.2e})'.format(self.year,long(df['Yield_Bu_per_Acre'].mean()),long(df['Yield_Bu_per_Acre'].std()))
+        print '{0} Yield (Bu/Acre):{1:.2f} ({2:.2f})'.format(self.year,df['Yield_Bu_per_Acre'].mean()[0],df['Yield_Bu_per_Acre'].std()[0])
         print '{0} Storage (Bu):{1:1.2e} ({2:1.2e})'.format(self.year,long(df['Storage_Bu'].mean()),long(df['Storage_Bu'].std()))
         print '{0} CWU, Blue (m3/ha):{1:1.2e} ({2:1.2e})'.format(self.year,long(df['CWU_bl_m3ha'].mean()),long(df['CWU_bl_m3ha'].std()))
         print '{0} CWU, Green, Irrigated (m3/ha):{1:1.2e} ({2:1.2e})'.format(self.year,long(df['CWU_gn_ir_m3ha'].mean()),long(df['CWU_gn_ir_m3ha'].std()))
         print '{0} CWU, Green, Rainfed (m3/ha):{1:1.2e} ({2:1.2e})'.format(self.year,long(df['CWU_gn_rf_m3ha'].mean()),long(df['CWU_gn_rf_m3ha'].std()))
-        print '{0} Precipitation, Volume (km3):{1:1.2e} ({2:1.2e})'.format(self.year,long(df['Precipitation_Volume_km3'].mean()),long(df['Precipitation_Volume_km3'].std()))
-        print '{0} Capture Efficiency (%):{1:1.2e} ({2:1.2e})'.format(self.year,long(df['Capture_Efficiency'].mean()),long(df['Capture_Efficiency'].std()))
+        print '{0} Precipitation, Volume (m3):{1:1.2e} ({2:1.2e})'.format(self.year,long((df['Precipitation_Volume_km3']*1.e9).mean()),long((df['Precipitation_Volume_km3']*1.e9).std()))
+        print '{0} Capture Efficiency (%):{1:.2f} ({2:.2f})'.format(self.year,df['Capture_Efficiency'].mean()[0],df['Capture_Efficiency'].std()[0])
         print '{0} VWS, Irrigated (m3):{1:1.2e} ({2:1.2e})'.format(self.year,long(df['VWS_ir_m3'].mean()),long(df['VWS_ir_m3'].std()))
         print '{0} VWS, Rainfed (m3):{1:1.2e} ({2:1.2e})'.format(self.year,long(df['VWS_rf_m3'].mean()),long(df['VWS_rf_m3'].std()))
         print '{0} VWS, Total (m3):{1:1.2e} ({2:1.2e})'.format(self.year,long(df['VWS_m3'].mean()),long(df['VWS_m3'].std()))

@@ -2,7 +2,7 @@
 *
 
 # Exceptions...
-!.gitignore
 !*/
+!.gitignore
 !*.py
 !*.r

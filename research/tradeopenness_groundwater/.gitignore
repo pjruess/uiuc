@@ -1,0 +1,14 @@
+# Ignore folders
+#archive/
+#literature/
+rawdata/DOT_03-01-2019 14-24-34-36_timeSeries
+.RData
+.Rhistory
+cleandata/input_data_clean.csv
+cleandata/bilateral_trade_clean.csv
+cleandata/clean_bitotaltrade_long.csv
+cleandata/clean_bitotaltrade_long_extended.csv
+cleandata/clean_df1.csv
+cleandata/main_df1.csv
+results/input_data_clean_extended_stage0.csv
+
